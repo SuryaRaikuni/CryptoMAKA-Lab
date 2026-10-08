@@ -46,12 +46,17 @@ def run_reduced_protocol() -> dict[str, Any]:
 
     Returns structured result. Explicitly labeled as proposed extension.
     """
+
     from cryptomaka.protocols.ju_park import (
-        ControlServer, CloudServer, User,
-        hx, xb, H, rand32, ts, xor_bytes, xor_stream, enc_pair, fresh,
-        TIMESTAMP_WINDOW
+        CloudServer,
+        ControlServer,
+        H,
+        User,
+        hx,
+        ts,
+        xb,
+        xor_bytes,
     )
-    import hmac as _hmac
 
     label = "PROPOSED EXTENSION — not part of Ju & Park (2023)"
 

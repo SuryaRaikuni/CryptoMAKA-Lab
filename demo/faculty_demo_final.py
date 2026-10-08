@@ -1,8 +1,7 @@
 import os
-import sys
 import subprocess
+import sys
 import time
-
 
 # ============================================================
 # Secure MAKA / ECC Faculty Demonstration

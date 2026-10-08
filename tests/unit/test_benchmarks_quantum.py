@@ -19,8 +19,8 @@ def test_benchmark_metrics_computation():
 def test_benchmark_communication_jupark():
     """Ju-Park communication report should have expected fields."""
     from cryptomaka.benchmarks.communication import (
-        jupark_communication_report,
         JU_PARK_PUBLISHED_BITS,
+        jupark_communication_report,
     )
     report = jupark_communication_report()
 

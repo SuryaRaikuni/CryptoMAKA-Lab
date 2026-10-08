@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 
 def test_security_runner_imports():
     from cryptomaka.security.runner import run_all_security_tests

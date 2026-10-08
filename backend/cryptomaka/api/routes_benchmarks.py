@@ -7,13 +7,13 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from cryptomaka.database import get_db, ProtocolRun, BenchmarkResult
+from cryptomaka.benchmarks.runner import run_benchmark, run_comparison_benchmark
+from cryptomaka.database import BenchmarkResult, ProtocolRun, get_db
 from cryptomaka.schemas.benchmarks import (
     BenchmarkRunRequest,
     BenchmarkRunResponse,
     ComparisonRunRequest,
 )
-from cryptomaka.benchmarks.runner import run_benchmark, run_comparison_benchmark
 
 router = APIRouter(prefix="/benchmarks", tags=["benchmarks"])
 

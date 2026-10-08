@@ -8,17 +8,16 @@ reproducibility. Never stores or prints session keys.
 
 from __future__ import annotations
 
-import os
 import platform
 import sys
 import time
 from typing import Any
 
-from cryptomaka.benchmarks.metrics import compute_metrics, BenchmarkMetrics
 from cryptomaka.benchmarks.communication import (
-    jupark_communication_report,
     ecc_communication_report,
+    jupark_communication_report,
 )
+from cryptomaka.benchmarks.metrics import compute_metrics
 from cryptomaka.config import get_settings
 
 
@@ -45,7 +44,7 @@ def _jupark_single_run_ns() -> tuple[int, int, int]:
     Run one complete Ju-Park protocol session.
     Returns (registration_ns, authentication_ns, total_ns).
     """
-    from cryptomaka.protocols.ju_park import ControlServer, CloudServer, User, run_protocol
+    from cryptomaka.protocols.ju_park import CloudServer, ControlServer, User, run_protocol
 
     cs = ControlServer("CS")
     cloud = CloudServer("S_j", cs)
@@ -59,9 +58,9 @@ def _jupark_single_run_ns() -> tuple[int, int, int]:
 
     t_auth_start = time.perf_counter_ns()
     try:
-        result = run_protocol()
+        run_protocol()
     except Exception:
-        result = None
+        pass
     t_auth_end = time.perf_counter_ns()
 
     reg_ns = t_reg_end - t_reg_start

@@ -16,7 +16,8 @@ Two caveats worth stating explicitly in the report:
 """
 
 import time
-from maka_skeleton import ControlServer, CloudServer, User
+
+from maka_skeleton import CloudServer, ControlServer, User
 
 N_TIMING = 2000       # iterations for the registration-only timing
 N_ROUND_TRIP = 500    # iterations for the full end-to-end timing

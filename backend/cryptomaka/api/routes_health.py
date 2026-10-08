@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter
+
 from cryptomaka.config import get_settings
 from cryptomaka.database import check_db_connection
 

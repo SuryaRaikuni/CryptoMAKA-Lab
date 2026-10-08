@@ -9,11 +9,10 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from cryptomaka.database import get_db, ProtocolRun
+from cryptomaka.database import ProtocolRun, get_db
 from cryptomaka.schemas.protocols import (
-    ProtocolRunRequest,
-    ProtocolRunResponse,
     ProtocolInfo,
+    ProtocolRunResponse,
 )
 
 router = APIRouter(prefix="/protocols", tags=["protocols"])
@@ -138,10 +137,9 @@ def _execute_protocol(protocol: str) -> dict[str, Any]:
 
 
 def _run_ju_park(t_start: int) -> dict[str, Any]:
-    from cryptomaka.protocols.ju_park import run_protocol, hx
     from cryptomaka.benchmarks.communication import jupark_communication_report
+    from cryptomaka.protocols.ju_park import run_protocol
 
-    t_reg = time.perf_counter_ns()
     try:
         result = run_protocol()
     except Exception as exc:
@@ -181,16 +179,14 @@ def _run_ju_park(t_start: int) -> dict[str, Any]:
 
 
 def _run_ecc(t_start: int) -> dict[str, Any]:
-    from cryptomaka.protocols.ecc import ControlServerECC, ECCCloudServer, ECCUser
     from cryptomaka.benchmarks.communication import ecc_communication_report
+    from cryptomaka.protocols.ecc import ControlServerECC, ECCCloudServer, ECCUser
 
     rc = ControlServerECC()
     cs = ECCCloudServer("cloud-1")
     user = ECCUser("alice", "password123", "bio-template")
 
-    t_reg = time.perf_counter_ns()
     user.register(rc)
-    t_reg_end = time.perf_counter_ns()
 
     try:
         m1, a, private_u = user.start_login()

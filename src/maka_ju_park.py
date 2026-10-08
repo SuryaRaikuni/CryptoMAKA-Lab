@@ -23,8 +23,7 @@ import hmac
 import os
 import time
 from dataclasses import dataclass
-from typing import Dict, Tuple, Optional
-
+from typing import Dict, Optional, Tuple
 
 HASH_BYTES = 32
 TIMESTAMP_WINDOW = 30

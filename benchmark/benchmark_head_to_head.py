@@ -15,8 +15,8 @@ import statistics
 import time
 from pathlib import Path
 
+from ecc_counterpart import ControlServerECC, ECCCloudServer, ECCUser
 from maka_skeleton import CloudServer, ControlServer, User
-from ecc_counterpart import ECCCloudServer, ControlServerECC, ECCUser
 
 OUT = Path("/mnt/data/benchmark_results.csv")
 N = 300
@@ -32,46 +32,70 @@ def avg_us(fn, n=N):
 
 
 def hashxor_registration():
-    rc = ControlServer(); u = User("bench", "pw", "bio")
+    rc = ControlServer()
+    u = User("bench", "pw", "bio")
     u.register(rc)
 
 
 def hashxor_login():
-    rc = ControlServer(); u = User("bench", "pw", "bio"); u.register(rc)
+    rc = ControlServer()
+    u = User("bench", "pw", "bio")
+    u.register(rc)
     u.start_login()
 
 
 def hashxor_server_response():
-    rc = ControlServer(); cs = CloudServer("cs", rc.register_cloud_server("cs")); u = User("bench", "pw", "bio"); u.register(rc)
-    m1, _ = u.start_login(); cs.respond_to_login(rc, u.id, m1["Ni"], m1["T1"], m1["Vi"])
+    rc = ControlServer()
+    cs = CloudServer("cs", rc.register_cloud_server("cs"))
+    u = User("bench", "pw", "bio")
+    u.register(rc)
+    m1, _ = u.start_login()
+    cs.respond_to_login(rc, u.id, m1["Ni"], m1["T1"], m1["Vi"])
 
 
 def hashxor_round():
-    rc = ControlServer(); cs = CloudServer("cs", rc.register_cloud_server("cs")); u = User("bench", "pw", "bio"); u.register(rc)
-    m1, a = u.start_login(); m2, sk, reason = cs.respond_to_login(rc, u.id, m1["Ni"], m1["T1"], m1["Vi"])
-    if m2 is None or sk is None or reason != "ok": raise RuntimeError(reason)
+    rc = ControlServer()
+    cs = CloudServer("cs", rc.register_cloud_server("cs"))
+    u = User("bench", "pw", "bio")
+    u.register(rc)
+    m1, a = u.start_login()
+    m2, sk, reason = cs.respond_to_login(rc, u.id, m1["Ni"], m1["T1"], m1["Vi"])
+    if m2 is None or sk is None or reason != "ok":
+        raise RuntimeError(reason)
     assert u.derive_session_key(a, m1["Ni"], m2["Nc"]) == sk
 
 
 def ecdh_registration():
-    rc = ControlServerECC(); u = ECCUser("bench", "pw", "bio")
+    rc = ControlServerECC()
+    u = ECCUser("bench", "pw", "bio")
     u.register(rc)
 
 
 def ecdh_login():
-    rc = ControlServerECC(); u = ECCUser("bench", "pw", "bio"); u.register(rc)
+    rc = ControlServerECC()
+    u = ECCUser("bench", "pw", "bio")
+    u.register(rc)
     u.start_login()
 
 
 def ecdh_server_response():
-    rc = ControlServerECC(); cs = ECCCloudServer("cs"); u = ECCUser("bench", "pw", "bio"); u.register(rc)
-    m1, _, _ = u.start_login(); cs.respond_to_login(rc, u.user_id, m1)
+    rc = ControlServerECC()
+    cs = ECCCloudServer("cs")
+    u = ECCUser("bench", "pw", "bio")
+    u.register(rc)
+    m1, _, _ = u.start_login()
+    cs.respond_to_login(rc, u.user_id, m1)
 
 
 def ecdh_round():
-    rc = ControlServerECC(); cs = ECCCloudServer("cs"); u = ECCUser("bench", "pw", "bio"); u.register(rc)
-    m1, a, priv = u.start_login(); m2, sk, _, reason = cs.respond_to_login(rc, u.user_id, m1)
-    if m2 is None or sk is None or reason != "ok": raise RuntimeError(reason)
+    rc = ControlServerECC()
+    cs = ECCCloudServer("cs")
+    u = ECCUser("bench", "pw", "bio")
+    u.register(rc)
+    m1, a, priv = u.start_login()
+    m2, sk, _, reason = cs.respond_to_login(rc, u.user_id, m1)
+    if m2 is None or sk is None or reason != "ok":
+        raise RuntimeError(reason)
     sk_u, reason_u = u.finish_login(a, priv, m1, m2)
     assert reason_u == "ok" and sk_u == sk
 
@@ -126,14 +150,20 @@ def main():
     ]
 
     with OUT.open("w", newline="") as f:
-        w = csv.writer(f); w.writerow(["scheme", "metric", "value"]); w.writerows(timing_rows + size_rows)
+        w = csv.writer(f)
+        w.writerow(["scheme", "metric", "value"])
+        w.writerows(timing_rows + size_rows)
 
     print("Head-to-head benchmark")
     for row in timing_rows:
         print(f"{row[0]:12s} {row[1]:22s}: {row[2]} us/op")
-    hx = float(next(r[2] for r in timing_rows if r[0] == "hash_xor" and r[1] == "end_to_end_round_us"))
-    ec = float(next(r[2] for r in timing_rows if r[0] == "p256_ecdh" and r[1] == "end_to_end_round_us"))
-    print(f"\nECDH / Hash-XOR end-to-end ratio: {ec/hx:.2f}x")
+    hx = float(
+        next(r[2] for r in timing_rows if r[0] == "hash_xor" and r[1] == "end_to_end_round_us")
+    )
+    ec = float(
+        next(r[2] for r in timing_rows if r[0] == "p256_ecdh" and r[1] == "end_to_end_round_us")
+    )
+    print(f"\nECDH / Hash-XOR end-to-end ratio: {ec / hx:.2f}x")
     print(f"Hash/XOR user-cloud exchange: {sizes['Hash-XOR total bits']} bits")
     print(f"P-256 ECDH user-cloud exchange: {sizes['ECDH total bits']} bits")
     print(f"Ju-Park complete-protocol literature figure: {sizes['Paper total bits']} bits")

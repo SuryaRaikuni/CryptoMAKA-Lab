@@ -10,6 +10,7 @@ Also ensures tables are created before each test module that needs them.
 from __future__ import annotations
 
 import os
+
 import pytest
 
 # Force in-memory SQLite for all tests
@@ -20,9 +21,9 @@ os.environ.setdefault("APP_ENV", "test")
 @pytest.fixture(scope="session", autouse=True)
 def create_test_db():
     """Create database tables once per test session."""
-    from cryptomaka.database.session import Base, engine
     # Import models so SQLAlchemy registers them
     import cryptomaka.database.models  # noqa: F401
+    from cryptomaka.database.session import Base, engine
     Base.metadata.create_all(bind=engine)
     yield
     # Clean up test DB file

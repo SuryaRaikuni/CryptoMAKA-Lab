@@ -11,16 +11,16 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from cryptomaka.config import get_settings
-from cryptomaka.database import create_tables, check_db_connection
 from cryptomaka.api import (
-    routes_health,
-    routes_protocols,
-    routes_security,
     routes_benchmarks,
     routes_experiments,
+    routes_health,
+    routes_protocols,
     routes_quantum,
+    routes_security,
 )
+from cryptomaka.config import get_settings
+from cryptomaka.database import create_tables
 
 settings = get_settings()
 

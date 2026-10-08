@@ -7,7 +7,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from cryptomaka.database import get_db, ProtocolRun, SecurityTestResult
+from cryptomaka.database import ProtocolRun, SecurityTestResult, get_db
 from cryptomaka.schemas.security import SecurityRunRequest, SecurityRunResponse
 from cryptomaka.security.runner import run_all_security_tests
 

@@ -4,7 +4,6 @@ Statistical metrics helpers for benchmark results.
 
 from __future__ import annotations
 
-import math
 import statistics
 from dataclasses import dataclass
 

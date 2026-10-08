@@ -10,9 +10,9 @@ project's security-analysis section, and a harness to extend if you add
 more attack scenarios.
 """
 
-import time
 import os
 import sys
+import time
 
 # Add the project's src directory to Python's import path
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -21,7 +21,7 @@ SRC_DIR = os.path.join(BASE_DIR, "src")
 if SRC_DIR not in sys.path:
     sys.path.insert(0, SRC_DIR)
 
-from maka_skeleton import ControlServer, CloudServer, User, H, nonce
+from maka_skeleton import CloudServer, ControlServer, H, User, nonce  # noqa: E402
 
 
 def fresh_setup():

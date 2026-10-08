@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 
 def test_ecc_registration():
     """User registration with the ECC control server should succeed."""
@@ -53,8 +51,8 @@ def test_ecc_tampered_authenticator():
 
 def test_ecc_public_key_serialization():
     """Public key round-trip serialization should be consistent."""
-    from cryptomaka.protocols.ecc import public_key_hex, load_public_key
     from cryptography.hazmat.primitives.asymmetric import ec
+    from cryptomaka.protocols.ecc import load_public_key, public_key_hex
     private = ec.generate_private_key(ec.SECP256R1())
     pub_hex = public_key_hex(private)
     recovered = load_public_key(pub_hex)

@@ -18,7 +18,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-
 # Published reference value from Ju & Park (Sensors 2023, 23, 9766) Table 5.
 # This is the authors' reported total; it is not a measurement from this code.
 JU_PARK_PUBLISHED_BITS = 3776

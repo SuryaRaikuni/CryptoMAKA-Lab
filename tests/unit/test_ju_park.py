@@ -45,7 +45,7 @@ def test_ju_park_hash_different_inputs():
 
 def test_ju_park_xor_bytes_roundtrip():
     """XOR twice with the same key should recover the original."""
-    from cryptomaka.protocols.ju_park import xor_bytes, rand32
+    from cryptomaka.protocols.ju_park import rand32, xor_bytes
     data = rand32()
     key = rand32()
     assert xor_bytes(xor_bytes(data, key), key) == data
@@ -66,14 +66,14 @@ def test_ju_park_fresh_timestamp():
 
 def test_ju_park_stale_timestamp():
     """A timestamp 60s in the past should not be fresh."""
-    from cryptomaka.protocols.ju_park import fresh, ts, TIMESTAMP_WINDOW
+    from cryptomaka.protocols.ju_park import TIMESTAMP_WINDOW, fresh, ts
     stale = ts() - TIMESTAMP_WINDOW - 10
     assert fresh(stale) is False
 
 
 def test_ju_park_registration():
     """User registration should complete without error."""
-    from cryptomaka.protocols.ju_park import ControlServer, CloudServer, User
+    from cryptomaka.protocols.ju_park import CloudServer, ControlServer, User
     cs = ControlServer("CS")
     cloud = CloudServer("S_j", cs)
     cloud.register()
@@ -83,7 +83,7 @@ def test_ju_park_registration():
 
 def test_ju_park_multiple_users():
     """Multiple users should be registerable and authenticatable."""
-    from cryptomaka.protocols.ju_park import ControlServer, CloudServer, User, run_protocol
+    from cryptomaka.protocols.ju_park import CloudServer, ControlServer, User
 
     cs = ControlServer("CS")
     cloud = CloudServer("S_j", cs)

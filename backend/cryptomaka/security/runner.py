@@ -13,12 +13,9 @@ formally proven secure under that threat model.
 
 from __future__ import annotations
 
-import copy
-import os
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
-
 
 DISCLAIMER = (
     "These tests are empirical simulations. "
@@ -40,7 +37,7 @@ class SecurityTestResult:
 def _run_fresh_jupark():
     """Set up a fresh Ju-Park protocol instance and complete authentication."""
     # Import here to avoid circular imports
-    from cryptomaka.protocols.ju_park import ControlServer, CloudServer, User, run_protocol
+    from cryptomaka.protocols.ju_park import run_protocol
     return run_protocol()
 
 
@@ -58,9 +55,7 @@ def test_replay_attack() -> SecurityTestResult:
     PIDi is therefore rejected by the Control Server with "unknown PID",
     demonstrating the pseudonym-update mechanism also provides replay protection.
     """
-    from cryptomaka.protocols.ju_park import (
-        ControlServer, CloudServer, User
-    )
+    from cryptomaka.protocols.ju_park import CloudServer, ControlServer, User
     start = time.perf_counter()
 
     cs = ControlServer("CS")
@@ -111,7 +106,10 @@ def test_stale_timestamp() -> SecurityTestResult:
     Eve replays a message after the timestamp freshness window has passed.
     """
     from cryptomaka.protocols.ju_park import (
-        ControlServer, CloudServer, User, fresh, TIMESTAMP_WINDOW
+        TIMESTAMP_WINDOW,
+        CloudServer,
+        ControlServer,
+        User,
     )
     start = time.perf_counter()
 
@@ -159,7 +157,7 @@ def test_message_tampering() -> SecurityTestResult:
     Eve intercepts M1 and flips a bit in the authenticator V1.
     The protocol should detect the tampered authenticator.
     """
-    from cryptomaka.protocols.ju_park import ControlServer, CloudServer, User, xb, hx
+    from cryptomaka.protocols.ju_park import CloudServer, ControlServer, User
     start = time.perf_counter()
 
     cs = ControlServer("CS")
@@ -208,9 +206,7 @@ def test_user_impersonation() -> SecurityTestResult:
     Eve tries to log in as Alice without knowing Alice's credentials.
     Eve generates a random V1 hoping it passes.
     """
-    from cryptomaka.protocols.ju_park import (
-        ControlServer, CloudServer, User, hx, rand32, ts
-    )
+    from cryptomaka.protocols.ju_park import CloudServer, ControlServer, User, hx, rand32, ts
     start = time.perf_counter()
 
     cs = ControlServer("CS")
@@ -266,7 +262,13 @@ def test_mitm_cloud_impersonation() -> SecurityTestResult:
     The cloud server should reject the tampered response.
     """
     from cryptomaka.protocols.ju_park import (
-        ControlServer, CloudServer, User, hx, rand32, xb, xor_bytes, H, ts
+        CloudServer,
+        ControlServer,
+        H,
+        User,
+        hx,
+        xb,
+        xor_bytes,
     )
     start = time.perf_counter()
 
@@ -330,9 +332,7 @@ def test_nonce_reuse() -> SecurityTestResult:
     Two protocol runs using the same nonce should be distinguishable.
     This verifies that the protocol uses fresh randomness per session.
     """
-    from cryptomaka.protocols.ju_park import (
-        ControlServer, CloudServer, User
-    )
+    from cryptomaka.protocols.ju_park import CloudServer, ControlServer, User
     start = time.perf_counter()
 
     cs = ControlServer("CS")

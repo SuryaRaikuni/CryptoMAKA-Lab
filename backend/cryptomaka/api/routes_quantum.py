@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter
+
 from cryptomaka.quantum.threat_model import (
     get_full_threat_report,
     toy_discrete_log_demo,
