@@ -1,0 +1,97 @@
+"""Security test API routes."""
+
+from __future__ import annotations
+
+import uuid
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+
+from cryptomaka.database import get_db, ProtocolRun, SecurityTestResult
+from cryptomaka.schemas.security import SecurityRunRequest, SecurityRunResponse
+from cryptomaka.security.runner import run_all_security_tests
+
+router = APIRouter(prefix="/security", tags=["security"])
+
+
+@router.post("/run", response_model=SecurityRunResponse)
+def run_security_tests(
+    request: SecurityRunRequest,
+    db: Session = Depends(get_db),
+):
+    """Run the full security test suite against a protocol."""
+    allowed = {"ju_park"}
+    if request.protocol not in allowed:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Security tests currently only support: {allowed}",
+        )
+
+    run_id = str(uuid.uuid4())
+
+    # Create a protocol run record for this security test session
+    db_run = ProtocolRun(
+        id=run_id,
+        protocol=request.protocol,
+        status="security_test",
+        authentication_success=False,
+        session_key_match=False,
+        implementation_version="0.1.0",
+    )
+    db.add(db_run)
+    db.flush()
+
+    # Execute the tests
+    report = run_all_security_tests(request.protocol)
+
+    # Persist individual results
+    for result in report["results"]:
+        db_result = SecurityTestResult(
+            run_id=run_id,
+            test_name=result["test"],
+            status=result["status"],
+            description=result["description"],
+            evidence=result["evidence"],
+            severity=result["severity"],
+        )
+        db.add(db_result)
+
+    db_run.status = "complete"
+    db.commit()
+
+    return SecurityRunResponse(
+        run_id=run_id,
+        protocol=report["protocol"],
+        total=report["total"],
+        passed=report["passed"],
+        failed=report["failed"],
+        disclaimer=report["disclaimer"],
+        results=report["results"],
+    )
+
+
+@router.get("/results")
+def list_security_results(
+    limit: int = 20,
+    db: Session = Depends(get_db),
+):
+    """Return the most recent security test results."""
+    results = (
+        db.query(SecurityTestResult)
+        .order_by(SecurityTestResult.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+    return [
+        {
+            "id": r.id,
+            "run_id": r.run_id,
+            "test_name": r.test_name,
+            "status": r.status,
+            "description": r.description,
+            "evidence": r.evidence,
+            "severity": r.severity,
+            "created_at": r.created_at.isoformat(),
+        }
+        for r in results
+    ]
