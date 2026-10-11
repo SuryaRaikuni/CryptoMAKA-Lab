@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { Play, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { ProtocolFlow } from '../components/ProtocolFlow';
 
 export default function ProtocolSimulator() {
   const [protocols, setProtocols] = useState<any[]>([]);
@@ -88,23 +89,7 @@ export default function ProtocolSimulator() {
             </div>
           </div>
           <div className="p-6">
-            <h3 className="font-semibold mb-4 text-gray-700">Message Exchange ({result.message_count} messages)</h3>
-            <div className="space-y-4 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-300 before:to-transparent">
-              {result.messages.map((m: any, idx: number) => (
-                <div key={idx} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
-                  <div className="flex items-center justify-center w-10 h-10 rounded-full border border-white bg-blue-500 text-slate-100 shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2">
-                    {idx + 1}
-                  </div>
-                  <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded border border-slate-200 bg-white shadow-sm">
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="font-bold text-slate-900">{m.name}</div>
-                      <div className="text-xs font-medium text-slate-500">{m.size_bits} bits</div>
-                    </div>
-                    <div className="text-slate-600 text-sm">{m.direction}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <ProtocolFlow protocolId={result.protocol} messages={result.messages} />
             
             {result.notes && result.notes.length > 0 && (
               <div className="mt-8 pt-6 border-t border-gray-100">
