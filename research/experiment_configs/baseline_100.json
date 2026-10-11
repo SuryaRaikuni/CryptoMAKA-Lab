@@ -1,0 +1,13 @@
+{
+  "experiment_name": "baseline_comparison_100_runs",
+  "description": "Standard reproducibility benchmark comparing Ju-Park 2023, ECC/ECDH P-256 counterpart, and Proposed Reduced-Roundtrip Extension over 100 iterations.",
+  "timestamp": "2026-10-11T12:00:00Z",
+  "protocols": ["ju_park", "ecc", "reduced_roundtrip"],
+  "iterations": 100,
+  "warmup": 10,
+  "environment": {
+    "framework": "CryptoMAKA Lab v0.1.0",
+    "python_version": "3.12+",
+    "os": "Windows / Linux cross-platform"
+  }
+}

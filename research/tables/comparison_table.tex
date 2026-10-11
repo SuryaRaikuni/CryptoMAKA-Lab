@@ -1,0 +1,33 @@
+\begin{table*}[t]
+\centering
+\caption{Comprehensive Performance and Communication Comparison Across Cloud-IoT Authentication Schemes}
+\label{tab:protocol_comparison}
+\begin{tabular}{lcccc}
+\hline
+\textbf{Metric} & \textbf{Ju-Park 2023 (Ref.)} & \textbf{Ju-Park 2023 (Normalized)} & \textbf{ECC/ECDH P-256} & \textbf{Proposed Extension} \\
+\hline
+\textbf{Cryptographic Primitives} & SHA-256, XOR & SHA-256, XOR & ECDH P-256, HKDF & SHA-256, XOR \\
+\textbf{Security Model} & 3-Party Cloud-IoT & 3-Party Cloud-IoT & 2-Party Direct / Relay & 3-Party Combined M3 \\
+\textbf{Message Count (Rounds)} & 4 & 4 & 2 & 3 \\
+\hline
+\textbf{Communication Cost (Total)} & & & & \\
+-- Published Theoretical Reference & \textbf{3,776 bits} & N/A & N/A & N/A \\
+-- Implementation Measurement & N/A & \textbf{4,224 bits} & \textbf{1,872 bits} & \textbf{3,616 bits} \\
+\hline
+\textbf{Message Breakdown (bits)} & & & & \\
+-- $M_1$ (User $\rightarrow$ Cloud) & 1,056 & 1,056 & 936 & 1,056 \\
+-- $M_2$ (Cloud $\rightarrow$ Control Server) & 1,600 & 1,600 & N/A & 1,600 \\
+-- $M_3$ (CS $\rightarrow$ Cloud / Combined) & 1,824 & 1,824 & N/A & 960 (Relayed) \\
+-- $M_4$ (Cloud $\rightarrow$ User) & 1,056 & 1,056 & 936 ($M_2$ response) & Included in $M_3$ \\
+\hline
+\textbf{Computational Cost (Mean, 100 Runs)} & & & & \\
+-- Registration Time & N/A & 0.031 ms & 0.009 ms & 0.031 ms \\
+-- Authentication Time & N/A & 0.219 ms & 0.262 ms & 0.222 ms \\
+-- Total Execution Time & N/A & \textbf{0.250 ms} & \textbf{0.271 ms} & \textbf{0.222 ms} \\
+-- Throughput & N/A & $\sim 4,000$ ops/sec & $\sim 3,700$ ops/sec & $\sim 4,500$ ops/sec \\
+\hline
+\textbf{Post-Quantum Threat Level} & Moderate (Grover) & Moderate (Grover) & Critical (Shor ECDLP) & Moderate (Grover) \\
+\textbf{Formal Proof Status} & BAN Logic / RoR (Paper) & Faithful Normalized & Proven ECDH & Requires Formal Proof \\
+\hline
+\end{tabular}
+\end{table*}

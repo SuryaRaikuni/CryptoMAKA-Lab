@@ -1,0 +1,322 @@
+{
+  "comparison": {
+    "ju_park": {
+      "protocol": "ju_park",
+      "iterations": 100,
+      "warmup": 10,
+      "total": {
+        "iterations": 100,
+        "warmup_iterations": 10,
+        "mean_ms": 0.2503,
+        "median_ms": 0.248,
+        "min_ms": 0.2458,
+        "max_ms": 0.3007,
+        "stddev_ms": 0.0085,
+        "throughput_ops_per_sec": 3994.73
+      },
+      "registration": {
+        "iterations": 100,
+        "warmup_iterations": 10,
+        "mean_ms": 0.0311,
+        "median_ms": 0.0308,
+        "min_ms": 0.0304,
+        "max_ms": 0.0426,
+        "stddev_ms": 0.0015,
+        "throughput_ops_per_sec": 32121.29
+      },
+      "authentication": {
+        "iterations": 100,
+        "warmup_iterations": 10,
+        "mean_ms": 0.2192,
+        "median_ms": 0.217,
+        "min_ms": 0.2152,
+        "max_ms": 0.2701,
+        "stddev_ms": 0.0084,
+        "throughput_ops_per_sec": 4562.09
+      },
+      "communication_bits": 4224,
+      "communication_report": {
+        "protocol": "ju_park",
+        "published_reference_bits": 3776,
+        "published_reference_source": "Ju & Park, Sensors 2023, 23(24), 9766, Table 5",
+        "implementation_bits": 4224,
+        "note": "Difference from published figure is expected: this reconstruction uses 256-bit nonces throughout for XOR-width consistency, while the paper's table may assume smaller nonce sizes. Published figure is the authoritative reference; implementation figure reflects this normalized reconstruction.",
+        "messages": [
+          {
+            "name": "M1",
+            "direction": "User \u2192 Cloud",
+            "fields": [
+              {
+                "name": "PIDi",
+                "bits": 256,
+                "description": "User pseudonym (SHA-256 hash)"
+              },
+              {
+                "name": "B1",
+                "bits": 256,
+                "description": "XOR-masked random nonce ri"
+              },
+              {
+                "name": "B2",
+                "bits": 256,
+                "description": "XOR-masked cloud identifier"
+              },
+              {
+                "name": "V1",
+                "bits": 256,
+                "description": "User authenticator MAC"
+              },
+              {
+                "name": "TS1",
+                "bits": 32,
+                "description": "Timestamp"
+              }
+            ],
+            "total_bits": 1056
+          },
+          {
+            "name": "M2",
+            "direction": "Cloud \u2192 Control Server",
+            "fields": [
+              {
+                "name": "M1",
+                "bits": 1056,
+                "description": "Forwarded M1 payload"
+              },
+              {
+                "name": "B3",
+                "bits": 256,
+                "description": "XOR-masked cloud nonce rj"
+              },
+              {
+                "name": "V2",
+                "bits": 256,
+                "description": "Cloud authenticator MAC"
+              },
+              {
+                "name": "TS2",
+                "bits": 32,
+                "description": "Timestamp"
+              }
+            ],
+            "total_bits": 1600
+          },
+          {
+            "name": "M3",
+            "direction": "Control Server \u2192 Cloud \u2192 User",
+            "fields": [
+              {
+                "name": "B6",
+                "bits": 256,
+                "description": "Masked (rk, ri)"
+              },
+              {
+                "name": "B7",
+                "bits": 256,
+                "description": "Masked common value c1"
+              },
+              {
+                "name": "B8",
+                "bits": 256,
+                "description": "Masked (rj, rk)"
+              },
+              {
+                "name": "B9",
+                "bits": 256,
+                "description": "Masked SIDj"
+              },
+              {
+                "name": "V3",
+                "bits": 256,
+                "description": "Server authenticator for cloud"
+              },
+              {
+                "name": "V4",
+                "bits": 256,
+                "description": "User authenticator"
+              },
+              {
+                "name": "TS3",
+                "bits": 32,
+                "description": "Timestamp"
+              }
+            ],
+            "total_bits": 1568
+          }
+        ]
+      },
+      "host_metadata": {
+        "os": "Windows",
+        "os_release": "11",
+        "python_version": "3.12.6 (tags/v3.12.6:a4a2d2b, Sep  6 2024, 20:11:23) [MSC v.1940 64 bit (AMD64)]",
+        "cpu": "AMD64 Family 23 Model 96 Stepping 1, AuthenticAMD",
+        "machine": "AMD64",
+        "app_version": "0.1.0",
+        "timestamp": "2026-10-11T06:37:14Z"
+      }
+    },
+    "ecc": {
+      "protocol": "ecc",
+      "iterations": 100,
+      "warmup": 10,
+      "total": {
+        "iterations": 100,
+        "warmup_iterations": 10,
+        "mean_ms": 0.2709,
+        "median_ms": 0.2647,
+        "min_ms": 0.2613,
+        "max_ms": 0.4161,
+        "stddev_ms": 0.0212,
+        "throughput_ops_per_sec": 3691.52
+      },
+      "registration": {
+        "iterations": 100,
+        "warmup_iterations": 10,
+        "mean_ms": 0.0087,
+        "median_ms": 0.0084,
+        "min_ms": 0.008,
+        "max_ms": 0.0199,
+        "stddev_ms": 0.0015,
+        "throughput_ops_per_sec": 115273.78
+      },
+      "authentication": {
+        "iterations": 100,
+        "warmup_iterations": 10,
+        "mean_ms": 0.2622,
+        "median_ms": 0.2562,
+        "min_ms": 0.2531,
+        "max_ms": 0.401,
+        "stddev_ms": 0.0206,
+        "throughput_ops_per_sec": 3813.65
+      },
+      "communication_bits": 1872,
+      "communication_report": {
+        "protocol": "ecc_ecdh",
+        "implementation_bits": 1872,
+        "note": "ECC counterpart \u2014 no published reference figure from Ju & Park paper.",
+        "messages": [
+          {
+            "name": "M1",
+            "direction": "User \u2192 Cloud",
+            "fields": [
+              {
+                "name": "Pu",
+                "bits": 520,
+                "description": "User ephemeral public key (P-256)"
+              },
+              {
+                "name": "Ni",
+                "bits": 128,
+                "description": "User nonce"
+              },
+              {
+                "name": "T1",
+                "bits": 32,
+                "description": "Timestamp"
+              },
+              {
+                "name": "Vi",
+                "bits": 256,
+                "description": "User authenticator"
+              }
+            ],
+            "total_bits": 936
+          },
+          {
+            "name": "M2",
+            "direction": "Cloud \u2192 User",
+            "fields": [
+              {
+                "name": "Pc",
+                "bits": 520,
+                "description": "Cloud ephemeral public key (P-256)"
+              },
+              {
+                "name": "Nc",
+                "bits": 128,
+                "description": "Cloud nonce"
+              },
+              {
+                "name": "T2",
+                "bits": 32,
+                "description": "Timestamp"
+              },
+              {
+                "name": "Vj",
+                "bits": 256,
+                "description": "Server authenticator"
+              }
+            ],
+            "total_bits": 936
+          }
+        ]
+      },
+      "host_metadata": {
+        "os": "Windows",
+        "os_release": "11",
+        "python_version": "3.12.6 (tags/v3.12.6:a4a2d2b, Sep  6 2024, 20:11:23) [MSC v.1940 64 bit (AMD64)]",
+        "cpu": "AMD64 Family 23 Model 96 Stepping 1, AuthenticAMD",
+        "machine": "AMD64",
+        "app_version": "0.1.0",
+        "timestamp": "2026-10-11T06:37:14Z"
+      }
+    },
+    "reduced_roundtrip": {
+      "protocol": "reduced_roundtrip",
+      "iterations": 100,
+      "warmup": 10,
+      "total": {
+        "iterations": 100,
+        "warmup_iterations": 10,
+        "mean_ms": 0.2223,
+        "median_ms": 0.2186,
+        "min_ms": 0.2159,
+        "max_ms": 0.2758,
+        "stddev_ms": 0.0117,
+        "throughput_ops_per_sec": 4497.62
+      },
+      "registration": {
+        "iterations": 100,
+        "warmup_iterations": 10,
+        "mean_ms": 0.0,
+        "median_ms": 0.0,
+        "min_ms": 0.0,
+        "max_ms": 0.0,
+        "stddev_ms": 0.0,
+        "throughput_ops_per_sec": 0.0
+      },
+      "authentication": {
+        "iterations": 100,
+        "warmup_iterations": 10,
+        "mean_ms": 0.2223,
+        "median_ms": 0.2186,
+        "min_ms": 0.2159,
+        "max_ms": 0.2758,
+        "stddev_ms": 0.0117,
+        "throughput_ops_per_sec": 4497.62
+      },
+      "communication_bits": null,
+      "communication_report": {},
+      "host_metadata": {
+        "os": "Windows",
+        "os_release": "11",
+        "python_version": "3.12.6 (tags/v3.12.6:a4a2d2b, Sep  6 2024, 20:11:23) [MSC v.1940 64 bit (AMD64)]",
+        "cpu": "AMD64 Family 23 Model 96 Stepping 1, AuthenticAMD",
+        "machine": "AMD64",
+        "app_version": "0.1.0",
+        "timestamp": "2026-10-11T06:37:14Z"
+      }
+    }
+  },
+  "iterations": 100,
+  "warmup": 10,
+  "host_metadata": {
+    "os": "Windows",
+    "os_release": "11",
+    "python_version": "3.12.6 (tags/v3.12.6:a4a2d2b, Sep  6 2024, 20:11:23) [MSC v.1940 64 bit (AMD64)]",
+    "cpu": "AMD64 Family 23 Model 96 Stepping 1, AuthenticAMD",
+    "machine": "AMD64",
+    "app_version": "0.1.0",
+    "timestamp": "2026-10-11T06:37:14Z"
+  }
+}
