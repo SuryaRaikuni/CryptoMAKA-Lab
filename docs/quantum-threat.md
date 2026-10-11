@@ -7,7 +7,7 @@ This document provides a conceptual analysis of the post-quantum cryptographic s
 ## 1. Academic Disclaimer
 
 > **IMPORTANT:**
-> This analysis is **conceptual and educational**. No large-scale, fault-tolerant quantum computer currently exists that can break 128-bit classical cryptographic primitives. Shor's algorithm has only been demonstrated experimentally on small numbers. 
+> This analysis is **conceptual and educational**. No large-scale, fault-tolerant quantum computer currently exists that can break 128-bit classical cryptographic primitives. Shor's algorithm has only been demonstrated experimentally on small toy numbers.
 > CryptoMAKA Lab does **not** implement quantum simulation hardware. The toy discrete-log demo in `threat_model.py` is a classical brute-force demonstration on a 31-bit prime group to illustrate group-theoretic hardness principles for educational purposes.
 
 ---
@@ -43,3 +43,21 @@ $$T_{\text{Shor}} = O((\log p)^3)$$
 For **NIST P-256**:
 - An attacker with a fault-tolerant quantum computer running approximately 2,330 logical qubits could recover the private scalar $d$ from ephemeral public keys $P_u, P_c$ during the session exchange.
 - This invalidates the security of ECDH key exchange, requiring migration to lattice-based Key Encapsulation Mechanisms (ML-KEM).
+
+---
+
+## 5. Post-Quantum Migration Roadmaps for Cloud-IoT
+
+As standards evolve towards post-quantum cryptography (FIPS 203 ML-KEM, FIPS 204 ML-DSA, FIPS 205 SLH-DSA), IoT designers face a trade-off:
+
+1. **Lightweight Symmetric / Hash-based Schemes (Ju-Park style):**
+   - Natural resistance to Shor's algorithm due to reliance on hash functions and symmetric keys.
+   - Low communication overhead (~4.2 kbits) and low power consumption suitable for edge microcontrollers.
+   - Requires online or pre-shared key infrastructure.
+
+2. **Lattice-Based Post-Quantum Schemes (ML-KEM-512 / Kyber):**
+   - Eliminates need for trusted online third-party server during key exchange.
+   - Significantly larger ciphertext and public key sizes (e.g., ~800 to 1,200 bytes per message), introducing transmission overhead and potential fragmentation on 6LoWPAN / Zigbee IoT links.
+
+3. **Hybrid Deployments:**
+   - Combining classical lightweight handshakes with post-quantum key encapsulation to guarantee defense-in-depth during the quantum transition period.

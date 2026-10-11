@@ -1,8 +1,24 @@
 # CryptoMAKA Lab
+![CI](https://github.com/SuryaRaikuni/CNS/actions/workflows/ci.yml/badge.svg)
 
 A web-based experimental platform for cloud-IoT mutual authentication and key-agreement research.
 
 This repository transforms the existing Crypto MAKA research prototype into a complete, reproducible, and deployable cybersecurity research platform.
+
+---
+
+## Documentation Index
+
+- [Architecture Overview](docs/architecture.md) – Monorepo design, module structure, and deployment topology.
+- [Protocol Specifications](docs/protocol.md) – Mathematical equations, message sequences, and normalization assumptions.
+- [Threat Model](docs/threat-model.md) – Dolev-Yao capabilities, attack vectors, and credential models.
+- [Security Analysis](docs/security-analysis.md) – Attack test matrix, evaluation vectors, and empirical verification.
+- [Benchmark Methodology](docs/benchmark-methodology.md) – Measurement clocks, statistical metrics, and reproducibility checklist.
+- [Quantum Threat Analysis](docs/quantum-threat.md) – Grover/Shor analysis and post-quantum migration roadmaps (FIPS 203).
+- [Deployment Guide](docs/deployment.md) – Local Docker Compose, production settings, and cloud deployment.
+- [Academic Write-up](docs/academic-writeup.md) – Research report structure suitable for faculty evaluation and publications.
+
+---
 
 ## Features
 
@@ -31,7 +47,11 @@ The primary research source is:
 ### Backend
 ```bash
 python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+# On Windows:
+.venv\Scripts\activate
+# On Linux/macOS:
+source .venv/bin/activate
+
 pip install -e ".[dev]"
 uvicorn cryptomaka.main:app --reload
 ```
@@ -48,7 +68,7 @@ npm run dev
 To run the full stack using Docker Compose:
 
 ```bash
-docker-compose up --build -d
+docker compose -f docker/compose.yaml up --build -d
 ```
 
 Access the application at `http://localhost:8080`.
