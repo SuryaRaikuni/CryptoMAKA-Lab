@@ -544,7 +544,8 @@ class CloudServer:
 
         kj = self.kj
 
-        assert kj is not None
+        if kj is None:
+            raise RuntimeError("cloud server key material is not initialized")
 
         B3 = xor_bytes(
             rj,
@@ -582,7 +583,8 @@ class CloudServer:
         ):
             return b"", False, {}
 
-        assert self.kj is not None
+        if self.kj is None:
+            raise RuntimeError("cloud server key material is not initialized")
 
         B6 = xb(m3["B6"])
         B7 = xb(m3["B7"])

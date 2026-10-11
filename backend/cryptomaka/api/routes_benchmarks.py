@@ -102,7 +102,34 @@ def compare_benchmarks(
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
-    return result
+    metadata = result["host_metadata"]
+    results = [
+        {
+            "protocol": protocol,
+            "total": result["comparison"][protocol]["total"],
+            "registration": result["comparison"][protocol]["registration"],
+            "authentication": result["comparison"][protocol]["authentication"],
+            "communication_bits": result["comparison"][protocol].get("communication_bits"),
+            "communication_report": result["comparison"][protocol].get(
+                "communication_report"
+            ),
+        }
+        for protocol in request.protocols
+    ]
+
+    return {
+        "comparison": result["comparison"],
+        "results": results,
+        "iterations": result["iterations"],
+        "warmup": result["warmup"],
+        "host_metadata": {
+            "system": metadata.get("os", "unknown"),
+            "machine": metadata.get("machine", "unknown"),
+            "python_version": metadata.get("python_version", "unknown"),
+            "os_release": metadata.get("os_release", "unknown"),
+            "cpu": metadata.get("cpu", "unknown"),
+        },
+    }
 
 
 @router.get("")

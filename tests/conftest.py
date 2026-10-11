@@ -26,12 +26,10 @@ def create_test_db():
     from cryptomaka.database.session import Base, engine
     Base.metadata.create_all(bind=engine)
     yield
-    # Clean up test DB file
+    # Clean up test DB file after releasing all pooled connections.
     Base.metadata.drop_all(bind=engine)
+    engine.dispose()
     import pathlib
     db_path = pathlib.Path("test_cryptomaka.db")
     if db_path.exists():
-        try:
-            db_path.unlink()
-        except Exception:
-            pass
+        db_path.unlink(missing_ok=True)

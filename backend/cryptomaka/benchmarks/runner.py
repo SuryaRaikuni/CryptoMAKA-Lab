@@ -8,6 +8,7 @@ reproducibility. Never stores or prints session keys.
 
 from __future__ import annotations
 
+import logging
 import platform
 import sys
 import time
@@ -59,8 +60,8 @@ def _jupark_single_run_ns() -> tuple[int, int, int]:
     t_auth_start = time.perf_counter_ns()
     try:
         run_protocol()
-    except Exception:
-        pass
+    except Exception as e:
+        logging.warning(f"Ju-Park protocol run failed: {e}")
     t_auth_end = time.perf_counter_ns()
 
     reg_ns = t_reg_end - t_reg_start
@@ -91,8 +92,8 @@ def _ecc_single_run_ns() -> tuple[int, int, int]:
         m2, sk_server, _, reason = cs.respond_to_login(rc, user.user_id, m1)
         if m2 is not None:
             sk_user, _ = user.finish_login(a, private_u, m1, m2)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.warning(f"ECC protocol run failed: {e}")
     t_auth_end = time.perf_counter_ns()
 
     reg_ns = t_reg_end - t_reg_start
@@ -111,8 +112,8 @@ def _reduced_single_run_ns() -> tuple[int, int, int]:
     t_start = time.perf_counter_ns()
     try:
         run_reduced_protocol()
-    except Exception:
-        pass
+    except Exception as e:
+        logging.warning(f"Reduced protocol run failed: {e}")
     t_end = time.perf_counter_ns()
 
     total_ns = t_end - t_start

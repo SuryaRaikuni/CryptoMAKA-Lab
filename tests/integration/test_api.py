@@ -100,6 +100,29 @@ def test_run_benchmark(client):
     assert "host_metadata" in data
 
 
+def test_compare_benchmarks_returns_frontend_contract(client):
+    """POST /api/v1/benchmarks/compare should expose chart-ready results."""
+    r = client.post("/api/v1/benchmarks/compare", json={
+        "protocols": ["ju_park", "ecc", "reduced_roundtrip"],
+        "iterations": 1,
+        "warmup": 0,
+    })
+
+    assert r.status_code == 200
+    data = r.json()
+    assert isinstance(data["results"], list)
+    assert {result["protocol"] for result in data["results"]} == {
+        "ju_park",
+        "ecc",
+        "reduced_roundtrip",
+    }
+    for result in data["results"]:
+        assert result["total"]["mean_ms"] >= 0
+        assert result["total"]["throughput_ops_per_sec"] >= 0
+    assert data["host_metadata"]["system"]
+    assert data["host_metadata"]["machine"]
+
+
 def test_create_experiment(client):
     """POST /api/v1/experiments should create and run an experiment."""
     r = client.post("/api/v1/experiments", json={
@@ -111,7 +134,6 @@ def test_create_experiment(client):
     assert "id" in data
     assert data["protocol"] == "ju_park"
     assert data["name"] == "Test Experiment"
-    return data["id"]
 
 
 def test_list_experiments(client):

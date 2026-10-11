@@ -70,7 +70,8 @@ def test_replay_attack() -> SecurityTestResult:
     # ── Legitimate full protocol run (CS updates the PID) ──
     m2_legit = cloud.receive_m1(m1_captured)
     m3_legit, reason_legit = cs.process_m2(m2_legit)
-    assert m3_legit is not None, f"Baseline failed: {reason_legit}"
+    if m3_legit is None:
+        raise ValueError(f"Baseline failed: {reason_legit}")
 
     # ── Eve replays the captured M1 ──
     m2_replay = cloud.receive_m1(m1_captured)
