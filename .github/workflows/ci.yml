@@ -75,6 +75,9 @@ jobs:
         with:
           version: '3.1'
 
+      # Install LaTeX (texlive) for PDF generation
+      - name: Install LaTeX
+        run: sudo apt-get update && sudo apt-get install -y texlive-latex-extra
       # Generate PDF from academic write‑up
       - name: Generate PDF Report
         run: |
