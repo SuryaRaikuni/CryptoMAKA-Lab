@@ -77,7 +77,13 @@ jobs:
 
       # Install LaTeX (texlive) for PDF generation
       - name: Install LaTeX
-        run: sudo apt-get update && sudo apt-get install -y texlive-latex-extra
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            texlive-latex-base \
+            texlive-latex-recommended \
+            texlive-fonts-recommended \
+            texlive-latex-extra
       # Generate PDF from academic write‑up
       - name: Generate PDF Report
         run: |

@@ -1,5 +1,8 @@
 # CryptoMAKA Lab
-![CI](https://github.com/SuryaRaikuni/CNS/actions/workflows/ci.yml/badge.svg)
+[![CI](https://github.com/SuryaRaikuni/CNS/actions/workflows/ci.yml/badge.svg)](https://github.com/SuryaRaikuni/CNS/actions)
+[![Release](https://img.shields.io/github/v/release/SuryaRaikuni/CNS?include_prereleases&color=blue)](https://github.com/SuryaRaikuni/CNS/releases)
+[![Academic Report](https://img.shields.io/badge/Academic%20Report-PDF-red)](https://github.com/SuryaRaikuni/CNS/releases/download/v0.1.0/academic-report.pdf)
+[![Quick Start](https://img.shields.io/badge/Quick%20Start-Guide-green)](QUICKSTART.md)
 
 A web-based experimental platform for cloud-IoT mutual authentication and key-agreement research.
 
@@ -16,6 +19,7 @@ This repository transforms the existing Crypto MAKA research prototype into a co
 - [Benchmark Methodology](docs/benchmark-methodology.md) – Measurement clocks, statistical metrics, and reproducibility checklist.
 - [Quantum Threat Analysis](docs/quantum-threat.md) – Grover/Shor analysis and post-quantum migration roadmaps (FIPS 203).
 - [Deployment Guide](docs/deployment.md) – Local Docker Compose, production settings, and cloud deployment.
+- [Quick Start Guide](QUICKSTART.md) – Fast 5-minute setup for backend, frontend, and Docker.
 - [Academic Write-up](docs/academic-writeup.md) – Research report structure suitable for faculty evaluation and publications.
 
 ---
