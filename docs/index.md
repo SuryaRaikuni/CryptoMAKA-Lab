@@ -21,6 +21,8 @@ CryptoMAKA Lab is an experimental, reproducible research platform for evaluating
 ## Benchmarks & Research
 - **[Benchmark Methodology](benchmark-methodology.md)** — High-resolution timing methodology (`perf_counter_ns`), statistical aggregation, and communication overhead breakdown.
 - **[Academic Write-up](academic-writeup.md)** — Formatted research manuscript suitable for academic review, faculty evaluation, and conference submissions.
+- **[Faculty Viva & Demo Guide](faculty-demo.md)** — Structured presentation outline, step-by-step demo flow, and common viva Q&A.
+- **[Final Verification Report](final-verification.md)** — Comprehensive test matrix, security simulation findings, and quality audit sign-off.
 
 ---
 

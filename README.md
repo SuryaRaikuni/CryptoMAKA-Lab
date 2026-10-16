@@ -21,6 +21,8 @@ This repository transforms the existing Crypto MAKA research prototype into a co
 - [Deployment Guide](docs/deployment.md) – Local Docker Compose, production settings, and cloud deployment.
 - [Quick Start Guide](QUICKSTART.md) – Fast 5-minute setup for backend, frontend, and Docker.
 - [Academic Write-up](docs/academic-writeup.md) – Research report structure suitable for faculty evaluation and publications.
+- [Faculty Viva & Demo Guide](docs/faculty-demo.md) – Step-by-step presentation script, demonstration flow, and viva Q&A.
+- [Final Verification Report](docs/final-verification.md) – 53-test execution matrix, empirical security evaluation, and quality audit sign-off.
 
 ---
 
