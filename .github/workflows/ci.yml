@@ -61,6 +61,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: 'pip'
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
       # Install markdownlint-cli via npm
       - name: Install markdownlint-cli
         run: npm install -g markdownlint-cli
@@ -78,12 +89,14 @@ jobs:
             texlive-latex-base \
             texlive-latex-recommended \
             texlive-fonts-recommended \
-            texlive-latex-extra
-      # Generate PDF from academic write‑up
+            texlive-latex-extra \
+            lmodern
+
+      # Generate PDF from academic write-up
       - name: Generate PDF Report
         run: |
           mkdir -p research/figures
-          pandoc docs/academic-writeup.md -V geometry:margin=1in -o research/figures/academic-report.pdf
+          pandoc docs/academic-writeup.md -V geometry:margin=1in -o research/figures/academic-report.pdf || python -c "from research.paper_generator.academic_paper_generator import AcademicPaperGenerator; AcademicPaperGenerator().generate_pdf('research/figures/academic-report.pdf')"
 
       # Upload PDF as artifact
       - name: Upload PDF Artifact
@@ -91,3 +104,4 @@ jobs:
         with:
           name: academic-report-pdf
           path: research/figures/academic-report.pdf
+
