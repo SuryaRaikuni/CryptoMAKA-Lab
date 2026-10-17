@@ -17,6 +17,7 @@ from cryptomaka.api import (
     routes_health,
     routes_protocols,
     routes_quantum,
+    routes_research,
     routes_security,
 )
 from cryptomaka.config import get_settings
@@ -91,3 +92,5 @@ app.include_router(routes_security.router, prefix=PREFIX)
 app.include_router(routes_benchmarks.router, prefix=PREFIX)
 app.include_router(routes_experiments.router, prefix=PREFIX)
 app.include_router(routes_quantum.router, prefix=PREFIX)
+app.include_router(routes_research.router, prefix=PREFIX)
+

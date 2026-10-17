@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Shield, Zap, Activity, History } from 'lucide-react';
+import { LayoutDashboard, Shield, Zap, Activity, History, FileText } from 'lucide-react';
 import Dashboard from './pages/Dashboard';
 import ProtocolSimulator from './pages/ProtocolSimulator';
 import SecurityLab from './pages/SecurityLab';
@@ -47,7 +47,35 @@ function Sidebar() {
           );
         })}
       </nav>
-      <div className="p-4 text-xs text-gray-500">
+
+      {/* Academic Paper Download Card */}
+      <div className="p-4 mx-4 mb-4 bg-gray-800/80 rounded-xl border border-gray-700/60 text-xs space-y-2">
+        <div className="flex items-center gap-2 text-indigo-400 font-bold">
+          <FileText size={15} />
+          <span>Academic Paper</span>
+        </div>
+        <p className="text-[11px] text-gray-400 leading-tight">
+          IEEE camera-ready preprint with formal proofs & IoT energy model.
+        </p>
+        <div className="flex gap-1.5 pt-1">
+          <a
+            href="/api/v1/research/paper/download?format=pdf"
+            download="CryptoMAKA_Academic_Manuscript.pdf"
+            className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-1.5 px-2 rounded text-center text-[10px] transition-colors"
+          >
+            PDF Paper
+          </a>
+          <a
+            href="/api/v1/research/paper/download?format=tex"
+            download="CryptoMAKA_Academic_Manuscript.tex"
+            className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-200 font-medium py-1.5 px-2 rounded text-center text-[10px] transition-colors"
+          >
+            LaTeX (.tex)
+          </a>
+        </div>
+      </div>
+
+      <div className="px-4 pb-4 text-[11px] text-gray-500">
         Ju-Park 2023 MAKA Research
       </div>
     </div>

@@ -332,3 +332,42 @@ def test_compare_benchmarks_with_mlkem_api(client):
     assert "ml_kem" in data["comparison"]
 
 
+def test_research_paper_metadata_api(client):
+    """GET /api/v1/research/paper/metadata returns title, sections, and formats."""
+    r = client.get("/api/v1/research/paper/metadata")
+    assert r.status_code == 200
+    data = r.json()
+    assert "title" in data
+    assert "authors" in data
+    assert "formats_available" in data
+    assert "pdf" in data["formats_available"]
+    assert "tex" in data["formats_available"]
+    assert len(data["sections"]) >= 5
+
+
+def test_research_paper_download_pdf_api(client):
+    """GET /api/v1/research/paper/download?format=pdf returns PDF binary."""
+    r = client.get("/api/v1/research/paper/download?format=pdf")
+    assert r.status_code == 200
+    assert r.headers["content-type"] == "application/pdf"
+    assert r.content.startswith(b"%PDF")
+    assert len(r.content) > 5000
+
+
+def test_research_paper_download_tex_api(client):
+    """GET /api/v1/research/paper/download?format=tex returns LaTeX source."""
+    r = client.get("/api/v1/research/paper/download?format=tex")
+    assert r.status_code == 200
+    assert "text" in r.headers["content-type"] or "tex" in r.headers["content-type"]
+    text = r.content.decode("utf-8")
+    assert r"\documentclass" in text
+    assert "CryptoMAKA" in text
+
+
+def test_research_paper_download_invalid_format_api(client):
+    """GET /api/v1/research/paper/download?format=invalid returns 422 validation error."""
+    r = client.get("/api/v1/research/paper/download?format=docx")
+    assert r.status_code == 422
+
+
+
