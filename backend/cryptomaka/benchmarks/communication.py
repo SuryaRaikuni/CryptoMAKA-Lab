@@ -169,3 +169,85 @@ def ecc_communication_report() -> dict:
         "note": "ECC counterpart — no published reference figure from Ju & Park paper.",
         "messages": [s.to_dict() for s in specs],
     }
+
+
+# ---------------------------------------------------------------------------
+# ML-KEM-768 message specifications (NIST FIPS 203 Table 2 sizes)
+# ---------------------------------------------------------------------------
+
+# ML-KEM-768 parameter sizes (bytes)
+MLKEM_PUBLIC_KEY_BYTES = 1184
+MLKEM_CIPHERTEXT_BYTES = 1088
+
+# Identifier field (ASCII user_id): assume ≤8 chars = 64 bits
+MLKEM_UID_BITS = 64
+MLKEM_AUTH_BITS = 256   # SHA3-256 authenticator
+
+
+def mlkem_message_specs() -> list[MessageSpec]:
+    """
+    Return message specs for the ML-KEM-768 MAKA post-quantum prototype.
+
+    Wire sizes follow NIST FIPS 203 Table 2 (ML-KEM-768):
+      - Public key (ek): 1184 bytes = 9472 bits
+      - Ciphertext (c):  1088 bytes = 8704 bits
+    """
+    PK_BITS = MLKEM_PUBLIC_KEY_BYTES * 8    # 9472 bits
+    CT_BITS = MLKEM_CIPHERTEXT_BYTES * 8    # 8704 bits
+
+    return [
+        MessageSpec(
+            name="M1",
+            direction="User → Cloud Server",
+            fields=[
+                MessageField("user_id", MLKEM_UID_BITS, "User identifier (ASCII)"),
+                MessageField("PK_u", PK_BITS, "User ML-KEM-768 encapsulation key"),
+                MessageField("nonce_u", NONCE_BITS, "User fresh random nonce (256-bit)"),
+                MessageField("T1", TIMESTAMP_BITS, "Timestamp"),
+                MessageField("Auth_u", MLKEM_AUTH_BITS, "SHA3-256 user authenticator"),
+            ],
+        ),
+        MessageSpec(
+            name="M2",
+            direction="Cloud Server → Registration Centre",
+            fields=[
+                MessageField("M1_forwarded", MLKEM_UID_BITS + PK_BITS + NONCE_BITS + TIMESTAMP_BITS + MLKEM_AUTH_BITS, "Forwarded M1 payload"),
+            ],
+        ),
+        MessageSpec(
+            name="M3",
+            direction="Registration Centre → Cloud Server",
+            fields=[
+                MessageField("ciphertext", CT_BITS, "ML-KEM-768 ciphertext encapsulating shared secret"),
+                MessageField("nonce_cs", NONCE_BITS, "Cloud server fresh nonce"),
+                MessageField("T2", TIMESTAMP_BITS, "Timestamp"),
+                MessageField("Auth_cs", MLKEM_AUTH_BITS, "SHA3-256 cloud authenticator"),
+            ],
+        ),
+        MessageSpec(
+            name="M4",
+            direction="Cloud Server → User",
+            fields=[
+                MessageField("ciphertext", CT_BITS, "Forwarded ciphertext for user decapsulation"),
+                MessageField("nonce_cs", NONCE_BITS, "Cloud server nonce"),
+                MessageField("T2", TIMESTAMP_BITS, "Timestamp"),
+                MessageField("Auth_cs", MLKEM_AUTH_BITS, "SHA3-256 cloud authenticator"),
+            ],
+        ),
+    ]
+
+
+def mlkem_communication_report() -> dict:
+    specs = mlkem_message_specs()
+    total_bits = calculate_total_bits(specs)
+    return {
+        "protocol": "ml_kem_768",
+        "implementation_bits": total_bits,
+        "note": (
+            "Post-quantum ML-KEM-768 prototype (NIST FIPS 203). "
+            "PK=1184B, CT=1088B as specified in FIPS 203 Table 2. "
+            "No published MAKA reference figure — experimental baseline."
+        ),
+        "messages": [s.to_dict() for s in specs],
+    }
+

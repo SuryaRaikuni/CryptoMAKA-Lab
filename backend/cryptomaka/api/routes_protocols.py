@@ -55,6 +55,20 @@ PROTOCOLS: dict[str, ProtocolInfo] = {
         primitives=["SHA-256", "XOR", "Nonce", "Timestamp"],
         label="proposed_extension",
     ),
+    "ml_kem": ProtocolInfo(
+        id="ml_kem",
+        name="ML-KEM-768 Post-Quantum Prototype (FIPS 203)",
+        description=(
+            "POST-QUANTUM PROTOTYPE — NOT a production implementation. "
+            "Demonstrates a KEM-based MAKA flow using ML-KEM-768 wire sizes "
+            "(PK=1184B, CT=1088B per NIST FIPS 203 Table 2) and SHA-3 family "
+            "primitives (SHA3-256, SHA3-512, SHAKE-256) as specified in FIPS 203. "
+            "For production use, replace with liboqs-python or OpenSSL oqs-provider."
+        ),
+        message_count=4,
+        primitives=["SHA3-256", "SHA3-512", "SHAKE-256", "ML-KEM-768 (simulated)"],
+        label="post_quantum_prototype",
+    ),
 }
 
 
@@ -132,6 +146,8 @@ def _execute_protocol(protocol: str) -> dict[str, Any]:
         from cryptomaka.protocols.reduced_roundtrip import run_reduced_protocol
         result = run_reduced_protocol()
         return result
+    elif protocol == "ml_kem":
+        return _run_ml_kem(t_start)
     else:
         raise ValueError(f"Unknown protocol: {protocol}")
 
@@ -229,4 +245,52 @@ def _run_ecc(t_start: int) -> dict[str, Any]:
             "Uses NIST P-256 + HKDF-SHA256.",
             "Session key value is not logged or returned.",
         ],
+    }
+
+
+def _run_ml_kem(t_start: int) -> dict[str, Any]:
+    from cryptomaka.benchmarks.communication import mlkem_communication_report
+    from cryptomaka.protocols.ml_kem import run_protocol
+
+    try:
+        result = run_protocol()
+    except Exception as exc:
+        return {
+            "status": "error",
+            "authentication_success": False,
+            "session_key_match": False,
+            "error": str(exc),
+            "timings": {"total_ms": (time.perf_counter_ns() - t_start) / 1e6},
+        }
+
+    t_end = time.perf_counter_ns()
+    total_ms = (t_end - t_start) / 1e6
+    comm = mlkem_communication_report()
+
+    # ML-KEM-768 message sizes (FIPS 203 Table 2)
+    PK_BITS = 1184 * 8   # 9472 bits
+    CT_BITS = 1088 * 8   # 8704 bits
+    NONCE_BITS = 256
+    TS_BITS = 32
+    AUTH_BITS = 256
+    UID_BITS = 64
+    M1_BITS = UID_BITS + PK_BITS + NONCE_BITS + TS_BITS + AUTH_BITS
+
+    messages = [
+        {"name": "M1", "direction": "User → Cloud Server",               "size_bits": M1_BITS},
+        {"name": "M2", "direction": "Cloud Server → Registration Centre", "size_bits": M1_BITS},
+        {"name": "M3", "direction": "RC → Cloud (ciphertext + SK)",       "size_bits": CT_BITS + NONCE_BITS + TS_BITS + AUTH_BITS},
+        {"name": "M4", "direction": "Cloud → User",                       "size_bits": CT_BITS + NONCE_BITS + TS_BITS + AUTH_BITS},
+    ]
+
+    return {
+        "status": "success" if result.get("match") else "error",
+        "participants": 3,
+        "authentication_success": True,
+        "session_key_match": result.get("session_key_match", False),
+        "message_count": 4,
+        "messages": messages,
+        "timings": {"total_ms": round(total_ms, 4)},
+        "communication_bits": comm["implementation_bits"],
+        "notes": result.get("notes", []),
     }
