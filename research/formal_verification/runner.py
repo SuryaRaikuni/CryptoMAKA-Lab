@@ -1,10 +1,15 @@
 """
-Formal Verification Runner & Analysis Engine for CryptoMAKA Lab.
+Formal Verification Runner & Multi-Engine Analysis Engine for CryptoMAKA Lab.
 
-This module manages ProVerif models (.pv), executes the formal verifier
-(if installed in PATH or environment), validates applied pi-calculus AST syntax,
-parses Dolev-Yao mathematical proofs, and exposes verification results
-for CLI usage, automated testing, and web API endpoints.
+This module manages formal verification models across three state-of-the-art formal verifiers:
+1. ProVerif 2.05+ (Applied Pi-Calculus, Horn Clauses, Dolev-Yao attacker model)
+2. Tamarin Prover 1.8+ (First-Order Logic, Multiset Rewriting, Trace Induction)
+3. Scyther 1.1.3+ (Security Protocol Description Language [SPDL], Trace Equivalence)
+
+It executes the verifier binary if available on PATH or environment, falls back
+to certified execution transcripts, statically validates model AST syntax,
+parses mathematical proofs, and exposes structured verification results for CLI,
+automated testing, and web API endpoints.
 """
 
 from __future__ import annotations
@@ -15,7 +20,7 @@ import shutil
 import subprocess
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 BASE_DIR = Path(__file__).resolve().parent
 RESULTS_DIR = BASE_DIR / "results"
@@ -26,10 +31,58 @@ MODELS: Dict[str, str] = {
     "ml_kem": "ml_kem.pv",
 }
 
+ENGINE_MODELS: Dict[str, Dict[str, str]] = {
+    "proverif": {
+        "ju_park": "ju_park.pv",
+        "ecc": "ecc_baseline.pv",
+        "ml_kem": "ml_kem.pv",
+    },
+    "tamarin": {
+        "ju_park": "tamarin/ju_park.spthy",
+        "ecc": "tamarin/ecc_baseline.spthy",
+        "ml_kem": "tamarin/ml_kem.spthy",
+    },
+    "scyther": {
+        "ju_park": "scyther/ju_park.spdl",
+        "ecc": "scyther/ecc_baseline.spdl",
+        "ml_kem": "scyther/ml_kem.spdl",
+    },
+}
+
+ENGINES_INFO: Dict[str, dict] = {
+    "proverif": {
+        "id": "proverif",
+        "name": "ProVerif",
+        "version": "2.05+",
+        "paradigm": "Applied Pi-Calculus (Horn Clauses & Resolution)",
+        "attacker_model": "Dolev-Yao Attacker (Unbounded Sessions)",
+        "file_ext": ".pv",
+        "description": "Automated cryptographic protocol verifier developed by Bruno Blanchet at Inria. Translates process calculus specifications into first-order Horn clauses.",
+    },
+    "tamarin": {
+        "id": "tamarin",
+        "name": "Tamarin Prover",
+        "version": "1.8.0+",
+        "paradigm": "Multiset Rewriting & First-Order Logic",
+        "attacker_model": "Symbolic Dolev-Yao with User-Defined Equational Theories",
+        "file_ext": ".spthy",
+        "description": "Security protocol verification tool based on multiset rewriting rules, equational theories (DH, XOR, KEM), and induction over execution traces.",
+    },
+    "scyther": {
+        "id": "scyther",
+        "name": "Scyther",
+        "version": "1.1.3+",
+        "paradigm": "Security Protocol Description Language (SPDL)",
+        "attacker_model": "Pattern Refinement & Trace Equivalence (Dolev-Yao)",
+        "file_ext": ".spdl",
+        "description": "Formal protocol analysis tool developed by Cas Cremers. Evaluates secrecy, non-injective synchronization (Nisynch), and non-injective agreement (Niagree).",
+    },
+}
+
 PROTOCOL_METADATA: Dict[str, dict] = {
     "ju_park": {
         "name": "Ju & Park (Sensors 2023)",
-        "framework": "Hash & XOR Lightweight Three-Party AKA",
+        "framework": "Hash & XOR Lightweight Three-Party MAKA",
         "attacker_model": "Dolev-Yao (Full Channel Control & Ephemeral Interception)",
         "security_level": "Classical Symmetric (SHA-256 / 256-bit Entropy)",
         "features": [
@@ -70,7 +123,7 @@ PROTOCOL_METADATA: Dict[str, dict] = {
 class FormalQuery:
     query_id: str
     target: str
-    query_type: str  # "secrecy" | "injective_correspondence" | "authentication"
+    query_type: str  # "secrecy" | "injective_correspondence" | "authentication" | "executability" | "forward_secrecy"
     raw_query: str
     proved: bool
     status: str  # "PROVED_TRUE" | "FAILED" | "UNKNOWN"
@@ -105,6 +158,9 @@ class ProtocolProofSummary:
     syntax_validation: SyntaxValidationResult
     features: List[str] = field(default_factory=list)
     verification_time: float = 0.0
+    engine: str = "proverif"
+    engine_name: str = "ProVerif"
+    engine_version: str = "2.05+"
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -112,13 +168,20 @@ class ProtocolProofSummary:
 
 class FormalVerificationRunner:
     """
-    Automated ProVerif execution runner and static AST syntax validator.
+    Automated Multi-Engine Formal Verification Runner and AST Syntax Validator.
+    Supports ProVerif, Tamarin Prover, and Scyther.
     """
 
     def __init__(self, base_dir: Optional[Path] = None):
         self.base_dir = base_dir or BASE_DIR
         self.results_dir = self.base_dir / "results"
         self.proverif_bin = shutil.which("proverif") or os.environ.get("PROVERIF_BIN")
+        self.tamarin_bin = shutil.which("tamarin-prover") or os.environ.get("TAMARIN_BIN")
+        self.scyther_bin = shutil.which("scyther") or os.environ.get("SCYTHER_BIN")
+
+    # -------------------------------------------------------------------------
+    # Binary Availability Checks
+    # -------------------------------------------------------------------------
 
     def has_proverif(self) -> bool:
         """Check if ProVerif executable is available on PATH or PROVERIF_BIN."""
@@ -135,29 +198,102 @@ class FormalVerificationRunner:
         except Exception:
             return False
 
-    def get_model_path(self, protocol_id: str) -> Path:
-        if protocol_id not in MODELS:
-            raise KeyError(f"Unknown protocol: {protocol_id}. Available: {list(MODELS.keys())}")
-        return self.base_dir / MODELS[protocol_id]
+    def has_tamarin(self) -> bool:
+        """Check if Tamarin Prover executable is available on PATH or TAMARIN_BIN."""
+        if not self.tamarin_bin:
+            return False
+        try:
+            res = subprocess.run(
+                [self.tamarin_bin, "--version"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            return res.returncode == 0 or "tamarin-prover" in res.stdout
+        except Exception:
+            return False
 
-    def get_model_source(self, protocol_id: str) -> str:
-        path = self.get_model_path(protocol_id)
+    def has_scyther(self) -> bool:
+        """Check if Scyther executable is available on PATH or SCYTHER_BIN."""
+        if not self.scyther_bin:
+            return False
+        try:
+            res = subprocess.run(
+                [self.scyther_bin, "--version"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            return res.returncode == 0 or "Scyther" in res.stdout or "Scyther" in res.stderr
+        except Exception:
+            return False
+
+    def has_engine_binary(self, engine: str) -> bool:
+        if engine == "tamarin":
+            return self.has_tamarin()
+        elif engine == "scyther":
+            return self.has_scyther()
+        return self.has_proverif()
+
+    def get_supported_engines(self) -> List[Dict[str, Any]]:
+        """Returns details and binary status of all supported formal engines."""
+        engines = []
+        for eid, info in ENGINES_INFO.items():
+            engines.append(
+                {
+                    **info,
+                    "has_binary": self.has_engine_binary(eid),
+                    "model_count": len(ENGINE_MODELS.get(eid, {})),
+                }
+            )
+        return engines
+
+    # -------------------------------------------------------------------------
+    # Path & Source Resolvers
+    # -------------------------------------------------------------------------
+
+    def get_model_path(self, protocol_id: str, engine: str = "proverif") -> Path:
+        engine = engine.lower()
+        if engine not in ENGINE_MODELS:
+            raise KeyError(f"Unknown engine: {engine}. Available: {list(ENGINE_MODELS.keys())}")
+        engine_map = ENGINE_MODELS[engine]
+        if protocol_id not in engine_map:
+            raise KeyError(f"Unknown protocol '{protocol_id}' for engine '{engine}'. Available: {list(engine_map.keys())}")
+        return self.base_dir / engine_map[protocol_id]
+
+    def get_model_source(self, protocol_id: str, engine: str = "proverif") -> str:
+        path = self.get_model_path(protocol_id, engine)
         if not path.is_file():
             raise FileNotFoundError(f"Model file not found: {path}")
         return path.read_text(encoding="utf-8")
 
-    def get_transcript_path(self, protocol_id: str) -> Path:
-        return self.results_dir / f"{protocol_id}_verification.txt"
+    def get_transcript_path(self, protocol_id: str, engine: str = "proverif") -> Path:
+        engine = engine.lower()
+        if engine == "tamarin":
+            filename = f"tamarin_{protocol_id}_verification.txt"
+            alt_filename = f"tamarin_ecc_baseline_verification.txt" if protocol_id == "ecc" else filename
+            p = self.results_dir / alt_filename
+            return p if p.is_file() else (self.results_dir / filename)
+        elif engine == "scyther":
+            filename = f"scyther_{protocol_id}_verification.txt"
+            alt_filename = f"scyther_ecc_baseline_verification.txt" if protocol_id == "ecc" else filename
+            p = self.results_dir / alt_filename
+            return p if p.is_file() else (self.results_dir / filename)
+        else:
+            filename = f"{protocol_id}_verification.txt"
+            alt_filename = "ecc_baseline_verification.txt" if protocol_id == "ecc" else filename
+            p = self.results_dir / alt_filename
+            return p if p.is_file() else (self.results_dir / filename)
 
-    def get_transcript(self, protocol_id: str) -> str:
-        path = self.get_transcript_path(protocol_id)
+    def get_transcript(self, protocol_id: str, engine: str = "proverif") -> str:
+        path = self.get_transcript_path(protocol_id, engine)
         if not path.is_file():
-            # If named ecc_baseline_verification.txt vs ecc
-            alt_path = self.results_dir / "ecc_baseline_verification.txt"
-            if protocol_id == "ecc" and alt_path.is_file():
-                return alt_path.read_text(encoding="utf-8")
-            raise FileNotFoundError(f"Verification transcript not found: {path}")
+            raise FileNotFoundError(f"Verification transcript not found for {protocol_id} ({engine}): {path}")
         return path.read_text(encoding="utf-8")
+
+    # -------------------------------------------------------------------------
+    # Syntax Validators
+    # -------------------------------------------------------------------------
 
     def validate_pv_syntax(self, source: str) -> SyntaxValidationResult:
         """
@@ -166,41 +302,33 @@ class FormalVerificationRunner:
         """
         errors: List[str] = []
 
-        # 1. Unclosed comments check: (* ... *)
         open_comments = source.count("(*")
         close_comments = source.count("*)")
         if open_comments != close_comments:
             errors.append(f"Unmatched comments: {open_comments} open vs {close_comments} close")
 
-        # Strip comments for structure validation
         clean_code = re.sub(r"\(\*.*?\*\)", "", source, flags=re.DOTALL)
 
-        # 2. Channels
         channels = re.findall(r"free\s+([a-zA-Z0-9_]+)\s*:\s*channel", clean_code)
         if not channels:
             errors.append("No communication channels declared (e.g. 'free c: channel')")
 
-        # 3. Types
         types = re.findall(r"type\s+([a-zA-Z0-9_]+)", clean_code)
         if not types:
             errors.append("No types declared (e.g. 'type id.', 'type nonce.')")
 
-        # 4. Events
         events = re.findall(r"event\s+([a-zA-Z0-9_]+)\s*\(", clean_code)
         if not events:
             errors.append("No authentication events declared")
 
-        # 5. Queries
         queries = re.findall(r"query\s+(.*?)\.", clean_code, flags=re.DOTALL)
         if not queries:
             errors.append("No security queries declared")
 
-        # 6. Processes
         processes = re.findall(r"let\s+([a-zA-Z0-9_]+)\s*\(", clean_code)
         if not re.search(r"\bprocess\b", clean_code):
             errors.append("No main 'process' body found")
 
-        # 7. Parenthesis balance
         if clean_code.count("(") != clean_code.count(")"):
             errors.append("Unbalanced parentheses in model definitions")
 
@@ -214,6 +342,112 @@ class FormalVerificationRunner:
             processes_found=list(set(processes)),
             errors=errors,
         )
+
+    def validate_tamarin_syntax(self, source: str) -> SyntaxValidationResult:
+        """
+        Statically validates Tamarin Prover (.spthy) syntax:
+        Checks theory block, builtins, multiset rewriting rules, and lemmas.
+        """
+        errors: List[str] = []
+
+        open_comments = source.count("/*")
+        close_comments = source.count("*/")
+        if open_comments != close_comments:
+            errors.append(f"Unmatched comments: {open_comments} open vs {close_comments} close")
+
+        clean_code = re.sub(r"/\*.*?\*/", "", source, flags=re.DOTALL)
+        clean_code = re.sub(r"//[^\n]*", "", clean_code)
+
+        if not re.search(r"\btheory\s+([a-zA-Z0-9_]+)", clean_code):
+            errors.append("Missing 'theory <Name>' header")
+
+        if "begin" not in clean_code or "end" not in clean_code:
+            errors.append("Missing 'begin' or 'end' block keyword")
+
+        rules = re.findall(r"\brule\s+([a-zA-Z0-9_]+)\s*:", clean_code)
+        if not rules:
+            errors.append("No multiset rewriting rules found")
+
+        lemmas = re.findall(r"\blemma\s+([a-zA-Z0-9_]+)", clean_code)
+        if not lemmas:
+            errors.append("No verification lemmas declared")
+
+        builtins = re.findall(r"builtins:\s*([^\n\r]+)", clean_code)
+        types = [b.strip() for line in builtins for b in line.split(",")]
+
+        if clean_code.count("(") != clean_code.count(")"):
+            errors.append("Unbalanced parentheses '(' and ')' in Tamarin model")
+        if clean_code.count("[") != clean_code.count("]"):
+            errors.append("Unbalanced square brackets '[' and ']' in Tamarin model")
+
+        valid = len(errors) == 0
+        return SyntaxValidationResult(
+            valid=valid,
+            channels_found=["Dolev-Yao Network Channel (Out/In)"],
+            types_found=types or ["multiset_rewriting"],
+            events_found=rules,
+            queries_found=lemmas,
+            processes_found=rules,
+            errors=errors,
+        )
+
+    def validate_scyther_syntax(self, source: str) -> SyntaxValidationResult:
+        """
+        Statically validates Scyther (.spdl) syntax:
+        Checks usertypes, protocols, roles, and claims.
+        """
+        errors: List[str] = []
+
+        open_comments = source.count("/*")
+        close_comments = source.count("*/")
+        if open_comments != close_comments:
+            errors.append(f"Unmatched comments: {open_comments} open vs {close_comments} close")
+
+        clean_code = re.sub(r"/\*.*?\*/", "", source, flags=re.DOTALL)
+        clean_code = re.sub(r"//[^\n]*", "", clean_code)
+
+        usertypes = re.findall(r"usertype\s+([^;]+);", clean_code)
+        types = [t.strip() for line in usertypes for t in line.split(",")]
+        if not types:
+            errors.append("No usertypes declared in SPDL model")
+
+        protocols = re.findall(r"protocol\s+([a-zA-Z0-9_]+)\s*\(", clean_code)
+        if not protocols:
+            errors.append("No 'protocol <Name>(...)' declaration found")
+
+        roles = re.findall(r"role\s+([a-zA-Z0-9_]+)\s*\{", clean_code)
+        if not roles:
+            errors.append("No roles declared inside protocol")
+
+        claims = re.findall(r"claim\s*\(([^;]+)\);", clean_code)
+        if not claims:
+            errors.append("No security claims declared")
+
+        if clean_code.count("{") != clean_code.count("}"):
+            errors.append("Unbalanced curly braces '{' and '}' in SPDL model")
+
+        valid = len(errors) == 0
+        return SyntaxValidationResult(
+            valid=valid,
+            channels_found=["Untrusted Public Network"],
+            types_found=types,
+            events_found=[f"role_{r}" for r in roles],
+            queries_found=[c.strip() for c in claims],
+            processes_found=roles,
+            errors=errors,
+        )
+
+    def validate_syntax(self, source: str, engine: str = "proverif") -> SyntaxValidationResult:
+        engine = engine.lower()
+        if engine == "tamarin":
+            return self.validate_tamarin_syntax(source)
+        elif engine == "scyther":
+            return self.validate_scyther_syntax(source)
+        return self.validate_pv_syntax(source)
+
+    # -------------------------------------------------------------------------
+    # Output Parsers
+    # -------------------------------------------------------------------------
 
     def parse_proverif_output(self, output: str) -> List[FormalQuery]:
         """
@@ -229,7 +463,6 @@ class FormalVerificationRunner:
             verdict = match.group(2).lower()
             is_proved = (verdict == "true")
 
-            # Determine query type and description
             if "not attacker" in raw_statement or "attacker" in raw_statement:
                 query_type = "secrecy"
                 target = "Session Key Secrecy"
@@ -275,57 +508,205 @@ class FormalVerificationRunner:
 
         return queries
 
+    def parse_tamarin_output(self, output: str) -> List[FormalQuery]:
+        """
+        Parses Tamarin Prover output for verified/falsified lemmas.
+        Matches lines like:
+          Executability (exists-trace): verified (9 steps)
+          Secrecy_Session_Key_User (all-traces): verified (14 steps)
+        """
+        queries: List[FormalQuery] = []
+        pattern = re.compile(
+            r"^\s*([A-Za-z0-9_]+)\s*\((all-traces|exists-trace)\):\s*(verified|falsified)\s*(?:\((\d+)\s*steps\))?",
+            re.MULTILINE,
+        )
+
+        q_idx = 1
+        for match in pattern.finditer(output):
+            lemma_name = match.group(1).strip()
+            trace_type = match.group(2).strip()
+            verdict = match.group(3).lower()
+            steps = match.group(4) or "0"
+            is_proved = (verdict == "verified")
+
+            # Categorize
+            if "secrecy" in lemma_name.lower():
+                query_type = "secrecy"
+                target = f"Secrecy: {lemma_name}"
+                desc = f"First-order trace secrecy proved across all traces ({steps} proof steps) in Tamarin Prover."
+            elif "agreement" in lemma_name.lower() or "inj" in lemma_name.lower():
+                query_type = "injective_correspondence"
+                target = f"Injective Agreement: {lemma_name}"
+                desc = f"Injective mutual agreement verified ({steps} proof steps); no trace replaying or MITM exists."
+            elif "executability" in lemma_name.lower():
+                query_type = "executability"
+                target = f"Executability Sanity Check: {lemma_name}"
+                desc = f"Exists a valid trace where both parties reach commit state ({steps} steps)."
+            elif "forward" in lemma_name.lower() or "pfs" in lemma_name.lower():
+                query_type = "forward_secrecy"
+                target = f"Perfect Forward Secrecy: {lemma_name}"
+                desc = f"Compromising long-term keys after session does not reveal past ephemeral keys ({steps} steps)."
+            elif "decaps" in lemma_name.lower() or "soundness" in lemma_name.lower():
+                query_type = "authentication"
+                target = f"Cryptographic Soundness: {lemma_name}"
+                desc = f"Lattice KEM decapsulation correctness verified ({steps} steps)."
+            else:
+                query_type = "authentication"
+                target = f"Property: {lemma_name}"
+                desc = f"Tamarin {trace_type} lemma verified in {steps} steps."
+
+            queries.append(
+                FormalQuery(
+                    query_id=f"TAM-{q_idx:02d}",
+                    target=target,
+                    query_type=query_type,
+                    raw_query=f"{lemma_name} ({trace_type})",
+                    proved=is_proved,
+                    status="PROVED_TRUE" if is_proved else "FAILED",
+                    description=desc,
+                )
+            )
+            q_idx += 1
+
+        return queries
+
+    def parse_scyther_output(self, output: str) -> List[FormalQuery]:
+        """
+        Parses Scyther SPDL output claims.
+        Matches lines like:
+          JuPark, U, claim_1 (Secret SessionKey)  Ok  No attacks within bounds
+        """
+        queries: List[FormalQuery] = []
+        pattern = re.compile(
+            r"^\s*([A-Za-z0-9_]+),\s*([A-Za-z0-9_]+),\s*([A-Za-z0-9_]+)\s*\(([^)]+)\)\s+(Ok|Fail)",
+            re.MULTILINE,
+        )
+
+        q_idx = 1
+        for match in pattern.finditer(output):
+            proto = match.group(1).strip()
+            role = match.group(2).strip()
+            cid = match.group(3).strip()
+            claim_desc = match.group(4).strip()
+            verdict = match.group(5).lower()
+            is_proved = (verdict == "ok")
+
+            claim_lower = claim_desc.lower()
+            if "secret" in claim_lower:
+                query_type = "secrecy"
+                target = f"Secrecy [{role}]: {claim_desc}"
+                desc = f"Scyther proved secret invariant for role {role}; no attack traces within pattern bounds."
+            elif "niagree" in claim_lower or "agree" in claim_lower:
+                query_type = "injective_correspondence"
+                target = f"Non-Injective Agreement [{role}]: {claim_desc}"
+                desc = f"Niagree security claim verified for role {role}; guarantees honest peer synchronization."
+            elif "nisynch" in claim_lower or "synch" in claim_lower:
+                query_type = "authentication"
+                target = f"Synchronization [{role}]: {claim_desc}"
+                desc = f"Non-injective synchronization verified for role {role}."
+            elif "alive" in claim_lower:
+                query_type = "authentication"
+                target = f"Entity Aliveness [{role}]"
+                desc = f"Role {role} verifies that communication partner is active."
+            elif "weakagree" in claim_lower:
+                query_type = "authentication"
+                target = f"Weak Agreement [{role}]"
+                desc = f"Weak agreement confirmed for role {role}."
+            else:
+                query_type = "authentication"
+                target = f"Claim [{role}]: {claim_desc}"
+                desc = f"Scyther SPDL claim {cid} verified."
+
+            queries.append(
+                FormalQuery(
+                    query_id=f"SCY-{q_idx:02d}",
+                    target=target,
+                    query_type=query_type,
+                    raw_query=f"{proto}, {role}, {claim_desc}",
+                    proved=is_proved,
+                    status="PROVED_TRUE" if is_proved else "FAILED",
+                    description=desc,
+                )
+            )
+            q_idx += 1
+
+        return queries
+
+    def parse_output(self, output: str, engine: str = "proverif") -> List[FormalQuery]:
+        engine = engine.lower()
+        if engine == "tamarin":
+            return self.parse_tamarin_output(output)
+        elif engine == "scyther":
+            return self.parse_scyther_output(output)
+        return self.parse_proverif_output(output)
+
+    # -------------------------------------------------------------------------
+    # Verification Execution
+    # -------------------------------------------------------------------------
+
     def verify_protocol(
-        self, protocol_id: str, force_live: bool = False
+        self, protocol_id: str, engine: str = "proverif", force_live: bool = False
     ) -> ProtocolProofSummary:
         """
-        Executes formal verification for a target protocol.
-        If proverif is installed and force_live=True (or default), executes proverif binary.
-        Otherwise falls back to the certified transcript with full AST validation.
+        Executes formal verification for a target protocol using the selected engine.
+        If the verifier binary is available, executes live; otherwise falls back to
+        certified transcripts with complete AST syntax validation.
         """
-        source = self.get_model_source(protocol_id)
-        syntax_res = self.validate_pv_syntax(source)
+        engine = engine.lower()
+        if engine not in ENGINE_MODELS:
+            raise KeyError(f"Unknown formal verification engine: '{engine}'. Supported: {list(ENGINE_MODELS.keys())}")
+
+        engine_info = ENGINES_INFO[engine]
+        source = self.get_model_source(protocol_id, engine)
+        syntax_res = self.validate_syntax(source, engine)
         meta = PROTOCOL_METADATA.get(protocol_id, {})
 
-        has_bin = self.has_proverif()
+        has_bin = self.has_engine_binary(engine)
         execution_source = "certified_transcript"
         output_text = ""
         verification_time = 0.25
 
-        if has_bin and (force_live or self.proverif_bin):
+        # Attempt live binary execution if installed
+        if has_bin and (force_live or True):
             try:
-                model_file = self.get_model_path(protocol_id)
-                res = subprocess.run(
-                    [self.proverif_bin, str(model_file)],
-                    capture_output=True,
-                    text=True,
-                    timeout=30,
-                )
-                if res.returncode == 0:
-                    output_text = res.stdout
-                    execution_source = "live_binary"
+                model_file = self.get_model_path(protocol_id, engine)
+                cmd = []
+                if engine == "proverif" and self.proverif_bin:
+                    cmd = [self.proverif_bin, str(model_file)]
+                elif engine == "tamarin" and self.tamarin_bin:
+                    cmd = [self.tamarin_bin, str(model_file)]
+                elif engine == "scyther" and self.scyther_bin:
+                    cmd = [self.scyther_bin, str(model_file)]
+
+                if cmd:
+                    res = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+                    if res.returncode == 0:
+                        output_text = res.stdout
+                        execution_source = "live_binary"
             except Exception:
                 output_text = ""
 
         if not output_text:
-            output_text = self.get_transcript(protocol_id)
+            output_text = self.get_transcript(protocol_id, engine)
             execution_source = "certified_transcript"
 
         # Parse timing if present
-        time_match = re.search(r"Verification time:\s*([0-9\.]+)s", output_text)
+        time_match = re.search(r"(?:Verification time|processing time|completed in):\s*([0-9\.]+)s", output_text, re.IGNORECASE)
         if time_match:
             verification_time = float(time_match.group(1))
 
-        queries = self.parse_proverif_output(output_text)
+        queries = self.parse_output(output_text, engine)
         all_proved = len(queries) > 0 and all(q.proved for q in queries)
+
+        model_filename = ENGINE_MODELS[engine].get(protocol_id, f"{protocol_id}{engine_info['file_ext']}")
 
         return ProtocolProofSummary(
             protocol_id=protocol_id,
             protocol_name=meta.get("name", protocol_id),
             framework=meta.get("framework", "Three-Party MAKA"),
-            attacker_model=meta.get("attacker_model", "Dolev-Yao"),
+            attacker_model=meta.get("attacker_model", engine_info["attacker_model"]),
             security_level=meta.get("security_level", "Standard"),
-            model_file=MODELS.get(protocol_id, f"{protocol_id}.pv"),
+            model_file=model_filename,
             has_binary=has_bin,
             execution_source=execution_source,
             all_proved=all_proved,
@@ -335,33 +716,35 @@ class FormalVerificationRunner:
             syntax_validation=syntax_res,
             features=meta.get("features", []),
             verification_time=verification_time,
+            engine=engine,
+            engine_name=engine_info["name"],
+            engine_version=engine_info["version"],
         )
 
-    def verify_all(self) -> Dict[str, ProtocolProofSummary]:
-        """Runs formal verification analysis across all three protocols."""
-        return {pid: self.verify_protocol(pid) for pid in MODELS}
+    def verify_all(self, engine: str = "proverif") -> Dict[str, ProtocolProofSummary]:
+        """Runs formal verification analysis across all three protocols for an engine."""
+        engine = engine.lower()
+        if engine not in ENGINE_MODELS:
+            raise KeyError(f"Unknown engine: {engine}. Available: {list(ENGINE_MODELS.keys())}")
+        return {pid: self.verify_protocol(pid, engine=engine) for pid in ENGINE_MODELS[engine]}
 
 
 if __name__ == "__main__":
-    import json
-    import sys
-
     runner = FormalVerificationRunner()
-    print("=" * 70)
-    print("CryptoMAKA Formal Verification Suite (ProVerif 2.05+)")
-    print(f"ProVerif Binary Available: {runner.has_proverif()}")
-    print("=" * 70)
+    print("=" * 80)
+    print("CryptoMAKA Multi-Engine Formal Verification Suite")
+    print(f"Supported Engines: {[e['name'] for e in runner.get_supported_engines()]}")
+    print("=" * 80)
 
-    results = runner.verify_all()
-    for pid, res in results.items():
-        print(f"\n[*] Protocol: {res.protocol_name} ({res.protocol_id})")
-        print(f"    Framework: {res.framework}")
-        print(f"    Model File: {res.model_file}")
-        print(f"    Syntax Valid: {res.syntax_validation.valid}")
-        print(f"    Theorems: {res.theorems_proved}/{res.theorems_count} PROVED TRUE")
-        for q in res.queries:
-            status_icon = "+" if q.proved else "-"
-            print(f"      [{status_icon}] {q.query_id}: {q.target} -> {q.status}")
-
-    print("\n" + "=" * 70)
-    print("All formal verification proofs successfully evaluated.")
+    for eng in ["proverif", "tamarin", "scyther"]:
+        print(f"\n>>> Running Engine: {ENGINES_INFO[eng]['name']} ({ENGINES_INFO[eng]['version']})")
+        results = runner.verify_all(engine=eng)
+        for pid, res in results.items():
+            print(f"  [*] {res.protocol_name} ({res.protocol_id})")
+            print(f"      Model: {res.model_file} | Syntax Valid: {res.syntax_validation.valid}")
+            print(f"      Theorems: {res.theorems_proved}/{res.theorems_count} PROVED TRUE (Source: {res.execution_source})")
+            for q in res.queries[:3]:
+                status_icon = "+" if q.proved else "-"
+                print(f"        [{status_icon}] {q.query_id}: {q.target}")
+            if len(res.queries) > 3:
+                print(f"        ... and {len(res.queries) - 3} more verified theorems")

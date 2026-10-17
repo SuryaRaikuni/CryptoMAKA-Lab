@@ -1,0 +1,160 @@
+/* =========================================================================
+   CryptoMAKA Tamarin Prover Formal Verification Model: Ju & Park (2023)
+   Model: Three-Party Mutual Authentication and Key Agreement (MAKA)
+   Engine: Tamarin Prover (First-Order Logic & Multiset Rewriting)
+   ========================================================================= */
+
+theory JuParkProtocol
+begin
+
+builtins: hashing, symmetric-encryption
+
+/* --- Equational Theory for Masking and Pairing --- */
+functions: mask/2, unmask/2, pair/2, fst/1, snd/1
+equations:
+    unmask(mask(m, k), k) = m,
+    fst(pair(x, y)) = x,
+    snd(pair(x, y)) = y
+
+/* =========================================================================
+   1. Setup & Out-of-Band Registration Rules
+   ========================================================================= */
+
+rule Init_Control_Server:
+    [ Fr(~xcs) ]
+  --[ CSInit($CS, ~xcs) ]->
+    [ !CSState($CS, ~xcs) ]
+
+rule Register_User:
+    let sidi = h(<'sidi', $User, ~xcs>)
+        ki = h(<'ki', sidi, ~xcs, ~ni>)
+        pidi = h(<'pidi', sidi, ~ni>)
+    in
+    [ !CSState($CS, ~xcs), Fr(~ni) ]
+  --[ UserRegistered($User, $CS, pidi) ]->
+    [ !UserState($User, $CS, pidi, sidi, ki),
+      !CSUserStore($CS, pidi, sidi, ki) ]
+
+rule Register_Cloud:
+    let kj = h(<'kj', $Cloud, ~nj, ~xcs>)
+        sidj = h(<'sidj', $Cloud, ~nj>)
+    in
+    [ !CSState($CS, ~xcs), Fr(~nj) ]
+  --[ CloudRegistered($Cloud, $CS) ]->
+    [ !CloudState($Cloud, $CS, kj, sidj),
+      !CSCloudStore($CS, $Cloud, kj, sidj) ]
+
+/* =========================================================================
+   2. Protocol Handshake Rules
+   ========================================================================= */
+
+/* Step 1: User transmits M1 = (PIDi, B1, B2, V1, TS1) */
+rule User_Send_M1:
+    let B1 = mask(~ri, h(<sidi, $CS, ki>))
+        B2 = mask(h($Cloud), h(<$CS, sidi, ~ri>))
+        V1 = h(<$CS, ~ts1, sidi, ki, ~ri>)
+        m1 = <pidi, B1, B2, V1, ~ts1>
+    in
+    [ !UserState($User, $CS, pidi, sidi, ki), Fr(~ri), Fr(~ts1) ]
+  --[ UserStart($User, $CS, $Cloud, ~ri) ]->
+    [ Out(m1), UserSession($User, $CS, $Cloud, pidi, sidi, ki, ~ri, ~ts1) ]
+
+/* Step 2: Cloud intercepts M1, generates rj, sends M2 = (M1, B3, V2, TS2, Cloud) */
+rule Cloud_Forward_M2:
+    let B3 = mask(~rj, h(<kj, $Cloud>))
+        V2 = h(<kj, ~ts2, $Cloud, ~rj>)
+        m2 = <m1, B3, V2, ~ts2, $Cloud>
+    in
+    [ !CloudState($Cloud, $CS, kj, sidj), In(m1), Fr(~rj), Fr(~ts2) ]
+  --[ CloudForwarded($Cloud, $CS, ~rj) ]->
+    [ Out(m2), CloudSession($Cloud, $CS, kj, sidj, m1, ~rj, ~ts2) ]
+
+/* Step 3: Control Server verifies M1 & M2, generates rk, computes M3 */
+rule CS_Process_M2_Send_M3:
+    let m1 = <pidi, B1, B2, V1, ts1>
+        m2 = <m1, B3, V2, ts2, $Cloud>
+        rj = unmask(B3, h(<kj, $Cloud>))
+        ri = unmask(B1, h(<sidi, $CS, ki>))
+        expected_V2 = h(<kj, ts2, $Cloud, rj>)
+        expected_V1 = h(<$CS, ts1, sidi, ki, ri>)
+        target_cloud_h = unmask(B2, h(<$CS, sidi, ri>))
+        C1 = h(<mask(sidi, sidj), $CS>)
+        B6 = mask(pair(~rk, ri), h(<rj, kj>))
+        B7 = mask(sidi, h(<sidj, ~rk>))
+        B8 = mask(pair(rj, ~rk), h(<sidi, $CS, ri>))
+        B9 = mask(sidj, h(<sidi, ~rk>))
+        V3 = h(<kj, ri, ~rk, C1, ~ts3>)
+        V4 = h(<sidi, rj, ~rk, C1, ~ts3>)
+        m3 = <B6, B7, B8, B9, V3, V4, ~ts3>
+    in
+    [ !CSState($CS, ~xcs),
+      !CSUserStore($CS, pidi, sidi, ki),
+      !CSCloudStore($CS, $Cloud, kj, sidj),
+      In(m2), Fr(~rk), Fr(~ts3) ]
+  --[ Eq(V2, expected_V2),
+      Eq(V1, expected_V1),
+      Eq(target_cloud_h, h($Cloud)),
+      CSVerified($CS, pidi, $Cloud, ~rk) ]->
+    [ Out(m3) ]
+
+/* Step 4: Cloud processes M3, computes SK_Cloud, forwards M4 to User */
+rule Cloud_Finish_M3_Send_M4:
+    let pair_rk_ri = unmask(B6, h(<~rj, kj>))
+        rk = fst(pair_rk_ri)
+        ri = snd(pair_rk_ri)
+        sidi = unmask(B7, h(<sidj, rk>))
+        C1 = h(<mask(sidi, sidj), $CS>)
+        expected_V3 = h(<kj, ri, rk, C1, ts3>)
+        SK_Cloud = h(<C1, ri, ~rj, rk>)
+        m4 = <B8, B9, V4, ts3, ~ts4>
+    in
+    [ CloudSession($Cloud, $CS, kj, sidj, m1, ~rj, ~ts2),
+      In(<B6, B7, B8, B9, V3, V4, ts3>), Fr(~ts4) ]
+  --[ Eq(V3, expected_V3),
+      CloudCommit($Cloud, $CS, SK_Cloud) ]->
+    [ Out(m4), !CloudKey($Cloud, SK_Cloud) ]
+
+/* Step 5: User processes M4, verifies V4, computes SK_User */
+rule User_Finish_M4:
+    let pair_rj_rk = unmask(B8, h(<sidi, $CS, ~ri>))
+        rj = fst(pair_rj_rk)
+        rk = snd(pair_rj_rk)
+        sidj = unmask(B9, h(<sidi, rk>))
+        C1 = h(<mask(sidi, sidj), $CS>)
+        expected_V4 = h(<sidi, rj, rk, C1, ts3>)
+        SK_User = h(<C1, ~ri, rj, rk>)
+    in
+    [ UserSession($User, $CS, $Cloud, pidi, sidi, ki, ~ri, ~ts1),
+      In(<B8, B9, V4, ts3, ts4>) ]
+  --[ Eq(V4, expected_V4),
+      UserCommit($User, $Cloud, SK_User) ]->
+    [ !UserKey($User, SK_User) ]
+
+/* =========================================================================
+   3. Verification Lemmas (Secrecy & Injective Agreement)
+   ========================================================================= */
+
+/* Axiom for equality checks */
+restriction EqualityCheck:
+    "All x y #i. Eq(x, y) @i ==> x = y"
+
+/* Sanity check: protocol reaches completion */
+lemma Executability [exists-trace]:
+    exists-trace
+    "Ex u sj k #i #j. UserCommit(u, sj, k) @i & CloudCommit(sj, u, k) @j"
+
+/* Strong Secrecy of User Session Key against Dolev-Yao attacker */
+lemma Secrecy_Session_Key_User:
+    "All u sj k #i. UserCommit(u, sj, k) @i ==> not (Ex #j. !KU(k) @j)"
+
+/* Strong Secrecy of Cloud Session Key against Dolev-Yao attacker */
+lemma Secrecy_Session_Key_Cloud:
+    "All sj cs k #i. CloudCommit(sj, cs, k) @i ==> not (Ex #j. !KU(k) @j)"
+
+/* Injective Agreement between User and Cloud Server (Prevents Replay Attacks) */
+lemma Injective_Agreement_User_Cloud:
+    "All u sj k #i. UserCommit(u, sj, k) @i
+     ==> (Ex #j. CloudCommit(sj, u, k) @j & #j < #i
+          & not (Ex u2 #i2. UserCommit(u2, sj, k) @i2 & not (#i = #i2)))"
+
+end

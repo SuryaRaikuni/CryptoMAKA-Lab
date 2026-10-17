@@ -1,0 +1,144 @@
+/* =========================================================================
+   CryptoMAKA Scyther Formal Verification Model: ECC Baseline (Secp256r1)
+   Model: Three-Party Authenticated Ephemeral ECDH Key Exchange
+   Engine: Scyther v1.1.3+ (Trace Equivalence & Security Invariants)
+   ========================================================================= */
+
+usertype Nonce;
+usertype TimeStamp;
+usertype DHValue;
+usertype SessionKey;
+
+const g: Function;
+const mac: Function;
+const kdf: Function;
+
+/* Long-term symmetric authentication keys shared with Registration Center */
+secret k_u: Function;
+secret k_s: Function;
+
+protocol ECCBaseline(U, S, RC)
+{
+    role U
+    {
+        fresh a: Nonce;
+        fresh nu: Nonce;
+        fresh ts1: TimeStamp;
+        var b: Nonce;
+        var ns: Nonce;
+        var ts3, ts4: TimeStamp;
+
+        /* Step 1: User generates ephemeral pubA = g(a) and sends M1 to S */
+        send_1( U, S, (
+            U, S,
+            g(a),
+            nu,
+            mac((U, S, g(a), nu), k_u(U, RC)),
+            ts1
+        ) );
+
+        /* Step 4: User receives ticket issued by RC forwarded by S and confirmation MAC */
+        recv_4( S, U, (
+            { S, g(b), ns }k_u(U, RC),
+            mac((S, kdf(g(b), a, nu, ns), ts4), kdf(g(b), a, nu, ns)),
+            ts4
+        ) );
+
+        /* Secrecy and Authentication Claims */
+        claim(U, Secret, kdf(g(b), a, nu, ns));
+        claim(U, Nisynch);
+        claim(U, Niagree);
+        claim(U, Alive);
+        claim(U, Weakagree);
+    }
+
+    role S
+    {
+        fresh b: Nonce;
+        fresh ns: Nonce;
+        fresh ts2, ts4: TimeStamp;
+        var a: Nonce;
+        var nu: Nonce;
+        var ts1, ts3: TimeStamp;
+
+        /* Step 1: S receives M1 from U */
+        recv_1( U, S, (
+            U, S,
+            g(a),
+            nu,
+            mac((U, S, g(a), nu), k_u(U, RC)),
+            ts1
+        ) );
+
+        /* Step 2: S generates pubB = g(b) and sends M2 to RC */
+        send_2( S, RC, (
+            (
+                U, S,
+                g(a),
+                nu,
+                mac((U, S, g(a), nu), k_u(U, RC)),
+                ts1
+            ),
+            S,
+            g(b),
+            ns,
+            mac((S, g(b), ns), k_s(S, RC)),
+            ts2
+        ) );
+
+        /* Step 3: S receives tickets for U and S from RC */
+        recv_3( RC, S, (
+            { U, g(a), nu }k_s(S, RC),
+            { S, g(b), ns }k_u(U, RC),
+            ts3
+        ) );
+
+        /* Step 4: S computes session key kdf(g(a), b, nu, ns) and sends M4 to U */
+        send_4( S, U, (
+            { S, g(b), ns }k_u(U, RC),
+            mac((S, kdf(g(a), b, nu, ns), ts4), kdf(g(a), b, nu, ns)),
+            ts4
+        ) );
+
+        /* Secrecy and Authentication Claims */
+        claim(S, Secret, kdf(g(a), b, nu, ns));
+        claim(S, Nisynch);
+        claim(S, Niagree);
+        claim(S, Alive);
+    }
+
+    role RC
+    {
+        fresh ts3: TimeStamp;
+        var a, b: Nonce;
+        var nu, ns: Nonce;
+        var ts1, ts2: TimeStamp;
+
+        /* Step 2: RC receives M2 containing verified terms */
+        recv_2( S, RC, (
+            (
+                U, S,
+                g(a),
+                nu,
+                mac((U, S, g(a), nu), k_u(U, RC)),
+                ts1
+            ),
+            S,
+            g(b),
+            ns,
+            mac((S, g(b), ns), k_s(S, RC)),
+            ts2
+        ) );
+
+        /* Step 3: RC sends encrypted tickets for U and S */
+        send_3( RC, S, (
+            { U, g(a), nu }k_s(S, RC),
+            { S, g(b), ns }k_u(U, RC),
+            ts3
+        ) );
+
+        /* RC Authentication Claims */
+        claim(RC, Nisynch);
+        claim(RC, Niagree);
+    }
+}

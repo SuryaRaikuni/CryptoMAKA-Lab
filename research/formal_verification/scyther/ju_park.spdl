@@ -1,0 +1,152 @@
+/* =========================================================================
+   CryptoMAKA Scyther Formal Verification Model: Ju & Park (2023)
+   Model: Three-Party Mutual Authentication and Key Agreement (MAKA)
+   Engine: Scyther v1.1.3+ (Trace Equivalence & Pattern Matching)
+   ========================================================================= */
+
+usertype Nonce;
+usertype TimeStamp;
+usertype Pseudonym;
+usertype SessionKey;
+
+/* Cryptographic one-way hash and XOR masking functions */
+const h: Function;
+const mask: Function;
+
+/* Long-term symmetric secrets shared with Control Server */
+secret k_u: Function;
+secret k_s: Function;
+
+protocol JuPark(U, S, CS)
+{
+    role U
+    {
+        fresh ri: Nonce;
+        fresh ts1: TimeStamp;
+        var rj, rk: Nonce;
+        var ts3, ts4: TimeStamp;
+        var sidj: Nonce;
+
+        /* Step 1: User generates ephemeral nonce ri and sends M1 to S */
+        send_1( U, S, (
+            h(U, k_u(U, CS)),
+            mask(ri, h(k_u(U, CS), CS)),
+            mask(h(S), h(CS, ri)),
+            h(CS, ts1, k_u(U, CS), ri),
+            ts1
+        ) );
+
+        /* Step 4: User receives M4 from S forwarded from CS */
+        recv_4( S, U, (
+            mask( (rj, rk), h(k_u(U, CS), CS, ri) ),
+            mask( sidj, h(k_u(U, CS), rk) ),
+            h(k_u(U, CS), rj, rk, h(mask(k_u(U, CS), sidj), CS), ts3),
+            ts3,
+            ts4
+        ) );
+
+        /* Secrecy and Authentication Claims */
+        claim(U, Secret, h(h(mask(k_u(U, CS), sidj), CS), ri, rj, rk));
+        claim(U, Nisynch);
+        claim(U, Niagree);
+        claim(U, Alive);
+        claim(U, Weakagree);
+    }
+
+    role S
+    {
+        fresh rj: Nonce;
+        fresh ts2, ts4: TimeStamp;
+        var ri, rk: Nonce;
+        var ts1, ts3: TimeStamp;
+        var sidi: Nonce;
+
+        /* Step 1: Cloud receives M1 from U */
+        recv_1( U, S, (
+            h(U, k_u(U, CS)),
+            mask(ri, h(k_u(U, CS), CS)),
+            mask(h(S), h(CS, ri)),
+            h(CS, ts1, k_u(U, CS), ri),
+            ts1
+        ) );
+
+        /* Step 2: Cloud forwards M2 to CS */
+        send_2( S, CS, (
+            (
+                h(U, k_u(U, CS)),
+                mask(ri, h(k_u(U, CS), CS)),
+                mask(h(S), h(CS, ri)),
+                h(CS, ts1, k_u(U, CS), ri),
+                ts1
+            ),
+            mask(rj, h(k_s(S, CS), S)),
+            h(k_s(S, CS), ts2, S, rj),
+            ts2,
+            S
+        ) );
+
+        /* Step 3: Cloud receives M3 from CS */
+        recv_3( CS, S, (
+            mask( (rk, ri), h(rj, k_s(S, CS)) ),
+            mask( sidi, h(k_s(S, CS), rk) ),
+            mask( (rj, rk), h(k_u(U, CS), CS, ri) ),
+            mask( k_s(S, CS), h(sidi, rk) ),
+            h(k_s(S, CS), ri, rk, h(mask(sidi, k_s(S, CS)), CS), ts3),
+            h(sidi, rj, rk, h(mask(sidi, k_s(S, CS)), CS), ts3),
+            ts3
+        ) );
+
+        /* Step 4: Cloud sends M4 to U */
+        send_4( S, U, (
+            mask( (rj, rk), h(k_u(U, CS), CS, ri) ),
+            mask( k_s(S, CS), h(sidi, rk) ),
+            h(sidi, rj, rk, h(mask(sidi, k_s(S, CS)), CS), ts3),
+            ts3,
+            ts4
+        ) );
+
+        /* Secrecy and Authentication Claims */
+        claim(S, Secret, h(h(mask(sidi, k_s(S, CS)), CS), ri, rj, rk));
+        claim(S, Nisynch);
+        claim(S, Niagree);
+        claim(S, Alive);
+    }
+
+    role CS
+    {
+        fresh rk: Nonce;
+        fresh ts3: TimeStamp;
+        var ri, rj: Nonce;
+        var ts1, ts2: TimeStamp;
+
+        /* Step 2: CS receives M2 containing M1 and M2 payload */
+        recv_2( S, CS, (
+            (
+                h(U, k_u(U, CS)),
+                mask(ri, h(k_u(U, CS), CS)),
+                mask(h(S), h(CS, ri)),
+                h(CS, ts1, k_u(U, CS), ri),
+                ts1
+            ),
+            mask(rj, h(k_s(S, CS), S)),
+            h(k_s(S, CS), ts2, S, rj),
+            ts2,
+            S
+        ) );
+
+        /* Step 3: CS verifies integrity and sends M3 */
+        send_3( CS, S, (
+            mask( (rk, ri), h(rj, k_s(S, CS)) ),
+            mask( k_u(U, CS), h(k_s(S, CS), rk) ),
+            mask( (rj, rk), h(k_u(U, CS), CS, ri) ),
+            mask( k_s(S, CS), h(k_u(U, CS), rk) ),
+            h(k_s(S, CS), ri, rk, h(mask(k_u(U, CS), k_s(S, CS)), CS), ts3),
+            h(k_u(U, CS), rj, rk, h(mask(k_u(U, CS), k_s(S, CS)), CS), ts3),
+            ts3
+        ) );
+
+        /* CS Authentication Claim */
+        claim(CS, Nisynch);
+        claim(CS, Niagree);
+    }
+}

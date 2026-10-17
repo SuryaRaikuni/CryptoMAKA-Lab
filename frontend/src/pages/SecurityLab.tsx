@@ -51,6 +51,7 @@ export default function SecurityLab() {
 
   // Formal verification state
   const [formalProtocol, setFormalProtocol] = useState<'ju_park' | 'ecc' | 'ml_kem'>('ju_park');
+  const [formalEngine, setFormalEngine] = useState<'proverif' | 'tamarin' | 'scyther'>('proverif');
   const [formalSummary, setFormalSummary] = useState<any>(null);
   const [formalLoading, setFormalLoading] = useState(false);
   const [formalDetail, setFormalDetail] = useState<any>(null);
@@ -68,18 +69,16 @@ export default function SecurityLab() {
   // Fetch formal verification data
   useEffect(() => {
     if (activeTab === 'formal') {
-      if (!formalSummary) {
-        fetchFormalSummary();
-      }
-      fetchFormalDetail(formalProtocol);
+      fetchFormalSummary(formalEngine);
+      fetchFormalDetail(formalProtocol, formalEngine);
     }
-  }, [formalProtocol, activeTab]);
+  }, [formalProtocol, formalEngine, activeTab]);
 
-  const fetchFormalSummary = async () => {
+  const fetchFormalSummary = async (engine: string = formalEngine) => {
     setFormalLoading(true);
     setFormalError('');
     try {
-      const data = await api.get('/security/formal-verification');
+      const data = await api.get(`/security/formal-verification?engine=${engine}`);
       setFormalSummary(data);
     } catch (err: any) {
       setFormalError(err.message || 'Failed to fetch formal verification summary');
@@ -88,10 +87,10 @@ export default function SecurityLab() {
     }
   };
 
-  const fetchFormalDetail = async (proto: string) => {
+  const fetchFormalDetail = async (proto: string, engine: string = formalEngine) => {
     setDetailLoading(true);
     try {
-      const data = await api.get(`/security/formal-verification/${proto}`);
+      const data = await api.get(`/security/formal-verification/${proto}?engine=${engine}`);
       setFormalDetail(data);
     } catch (err: any) {
       console.error('Error fetching model detail:', err);
@@ -752,10 +751,43 @@ export default function SecurityLab() {
       )}
 
       {/* ──────────────────────────────────────────────────────────── */}
-      {/* TAB 3: FORMAL VERIFICATION (PROVERIF) */}
+      {/* TAB 3: FORMAL VERIFICATION (MULTI-ENGINE) */}
       {/* ──────────────────────────────────────────────────────────── */}
       {activeTab === 'formal' && (
         <div className="space-y-6">
+          {/* Multi-Engine Selector Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-slate-900 rounded-2xl border border-slate-800 shadow-sm">
+            <div className="flex items-center gap-2 px-2">
+              <ShieldCheck size={18} className="text-indigo-400" />
+              <span className="text-xs font-bold text-slate-200">Formal Verification Engine:</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { id: 'proverif', name: 'ProVerif 2.05+', role: 'Applied Pi-Calculus', ext: '.pv' },
+                { id: 'tamarin', name: 'Tamarin Prover 1.8+', role: 'Multiset Rewriting', ext: '.spthy' },
+                { id: 'scyther', name: 'Scyther 1.1.3+', role: 'Trace Equivalence', ext: '.spdl' },
+              ].map((eng) => {
+                const isActive = formalEngine === eng.id;
+                return (
+                  <button
+                    key={eng.id}
+                    onClick={() => setFormalEngine(eng.id as any)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all ${
+                      isActive
+                        ? 'bg-indigo-600 text-white shadow-md ring-2 ring-indigo-400/30'
+                        : 'bg-slate-800/80 text-slate-300 hover:text-white hover:bg-slate-800'
+                    }`}
+                  >
+                    <span>{eng.name}</span>
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded font-mono ${isActive ? 'bg-indigo-800 text-indigo-100' : 'bg-slate-950 text-slate-400'}`}>
+                      {eng.ext}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Header Engine Banner */}
           <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-2xl shadow-md border border-indigo-900/40 relative overflow-hidden">
             <div className="relative z-10 space-y-3">
@@ -767,12 +799,14 @@ export default function SecurityLab() {
                   <div>
                     <h2 className="text-lg font-bold text-white flex items-center gap-2">
                       Formal Protocol Verification Suite
-                      <span className="text-xs px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 font-medium">
-                        ProVerif 2.05+
+                      <span className="text-xs px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 font-medium font-mono">
+                        {formalSummary?.engine || formalEngine} ({formalSummary?.version || '1.0+'})
                       </span>
                     </h2>
                     <p className="text-xs text-indigo-200">
-                      Automated cryptographic protocol verification in the applied pi-calculus under the Dolev-Yao attacker model
+                      {formalEngine === 'proverif' && 'Automated cryptographic protocol verification in the applied pi-calculus under the Dolev-Yao attacker model'}
+                      {formalEngine === 'tamarin' && 'Formal protocol analysis via first-order logic, multiset rewriting rules, and induction over execution traces'}
+                      {formalEngine === 'scyther' && 'Security protocol verification using pattern refinement and trace equivalence over the Dolev-Yao adversary'}
                     </p>
                   </div>
                 </div>
@@ -780,13 +814,21 @@ export default function SecurityLab() {
                 <div className="flex items-center gap-2 bg-slate-950/60 backdrop-blur px-3 py-1.5 rounded-xl border border-indigo-500/20 text-xs">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                   <span className="text-indigo-200 font-medium">
-                    {formalSummary?.has_binary ? 'ProVerif Binary Available (Live)' : 'Certified Automated ProVerif Evaluation'}
+                    {formalSummary?.has_binary
+                      ? `${formalSummary?.engine || 'Engine'} Binary Available (Live)`
+                      : `Certified Automated ${formalSummary?.engine || 'Engine'} Evaluation`}
                   </span>
                 </div>
               </div>
 
               <div className="text-xs text-slate-300 leading-relaxed bg-black/20 p-3 rounded-xl border border-white/5">
-                <strong className="text-white">Academic Formal Method:</strong> Unlike empirical penetration testing, ProVerif translates cryptographic handshakes into Horn clauses and performs resolution to evaluate unbounded sessions. Proving injective correspondence ensures immunity to replay and impersonation attacks across arbitrary network interleaved executions.
+                <strong className="text-white">Academic Formal Method: </strong>
+                {formalEngine === 'proverif' &&
+                  'Unlike empirical penetration testing, ProVerif translates cryptographic handshakes into Horn clauses and performs resolution to evaluate unbounded sessions. Proving injective correspondence ensures immunity to replay and impersonation attacks across arbitrary network interleaved executions.'}
+                {formalEngine === 'tamarin' &&
+                  'Tamarin Prover models protocol executions as multiset rewriting rules over a labeled transition system. It natively models user-defined equational theories (Diffie-Hellman, XOR masking, and IND-CCA2 KEM reduction) and proves lemmas via backward search and induction.'}
+                {formalEngine === 'scyther' &&
+                  'Scyther evaluates protocols using pattern refinement and trace equivalence over the Dolev-Yao adversary model. It rigorously proves secrecy, non-injective synchronization (Nisynch), and non-injective agreement (Niagree) across all possible execution patterns within bounds.'}
               </div>
             </div>
           </div>
@@ -800,7 +842,7 @@ export default function SecurityLab() {
           {formalLoading && (
             <div className="p-6 bg-white rounded-xl border border-gray-200 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
               <Clock className="animate-spin text-blue-600" size={16} />
-              Evaluating formal proofs with ProVerif engine...
+              Evaluating formal proofs with {formalSummary?.engine || formalEngine} engine...
             </div>
           )}
 
@@ -853,7 +895,7 @@ export default function SecurityLab() {
                         100% True
                       </span>
                     </div>
-                    <div className="text-[11px] text-gray-400 mt-1">Unbounded Dolev-Yao sessions</div>
+                    <div className="text-[11px] text-gray-400 mt-1">Evaluated by {formalSummary.engine}</div>
                   </div>
 
                   <div className="bg-white p-4 rounded-xl shadow-xs border border-gray-200">
@@ -863,12 +905,12 @@ export default function SecurityLab() {
                   </div>
 
                   <div className="bg-white p-4 rounded-xl shadow-xs border border-gray-200">
-                    <div className="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-1">Replay Protection</div>
+                    <div className="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-1">Replay & Secrecy</div>
                     <div className="text-sm font-bold text-indigo-700 flex items-center gap-1.5">
                       <Lock size={14} className="text-indigo-600" />
                       Injective Verified
                     </div>
-                    <div className="text-[11px] text-gray-500 mt-1">inj-event correspondence hold</div>
+                    <div className="text-[11px] text-gray-500 mt-1">Replay-free agreement verified</div>
                   </div>
 
                   <div className="bg-white p-4 rounded-xl shadow-xs border border-gray-200">
@@ -878,7 +920,7 @@ export default function SecurityLab() {
                       Syntax Valid
                     </div>
                     <div className="text-[11px] text-gray-500 mt-1">
-                      {proto.syntax_validation?.events_found?.length || 0} events · {proto.syntax_validation?.queries_found?.length || 0} queries
+                      {proto.syntax_validation?.events_found?.length || 0} events/rules · {proto.syntax_validation?.queries_found?.length || 0} queries/claims
                     </div>
                   </div>
                 </div>
@@ -906,7 +948,9 @@ export default function SecurityLab() {
                       }`}
                     >
                       <FileCode size={14} className="text-purple-600" />
-                      Applied Pi-Calculus Model ({proto.model_file})
+                      {formalEngine === 'proverif' && 'Applied Pi-Calculus Model'}
+                      {formalEngine === 'tamarin' && 'Tamarin Multiset Rewriting Theory'}
+                      {formalEngine === 'scyther' && 'Scyther SPDL Specification'} ({proto.model_file})
                     </button>
                     <button
                       onClick={() => setDetailView('transcript')}
@@ -917,7 +961,9 @@ export default function SecurityLab() {
                       }`}
                     >
                       <Terminal size={14} className="text-emerald-600" />
-                      ProVerif Proof Resolution Log
+                      {formalEngine === 'proverif' && 'ProVerif Resolution Log'}
+                      {formalEngine === 'tamarin' && 'Tamarin Proof Log'}
+                      {formalEngine === 'scyther' && 'Scyther Trace Log'}
                     </button>
                   </div>
 
@@ -933,7 +979,7 @@ export default function SecurityLab() {
                     <div className="bg-blue-50/50 border border-blue-200 rounded-xl p-4 space-y-2">
                       <h4 className="text-xs font-bold text-blue-900 uppercase tracking-wider flex items-center gap-1.5">
                         <BookOpen size={14} className="text-blue-600" />
-                        Formal Security Properties Formally Verified in ProVerif:
+                        Formal Security Properties Formally Verified in {formalSummary.engine}:
                       </h4>
                       <ul className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-blue-950">
                         {proto.features?.map((f: string, i: number) => (
@@ -970,7 +1016,7 @@ export default function SecurityLab() {
                           </div>
 
                           <div className="bg-slate-900 text-slate-200 p-2.5 rounded-lg font-mono text-xs overflow-x-auto border border-slate-800">
-                            <span className="text-emerald-400 font-bold">RESULT </span>
+                            <span className="text-emerald-400 font-bold">LEMMA / CLAIM: </span>
                             {q.raw_query} <span className="text-emerald-400 font-bold">is true.</span>
                           </div>
 
@@ -983,7 +1029,7 @@ export default function SecurityLab() {
                   </div>
                 )}
 
-                {/* 2. ProVerif Applied Pi Model View */}
+                {/* 2. Model Source View */}
                 {detailView === 'model' && (
                   <div className="bg-slate-950 rounded-xl border border-slate-800 p-4 space-y-3 font-mono text-xs">
                     <div className="flex justify-between items-center pb-2 border-b border-slate-800">
@@ -999,13 +1045,13 @@ export default function SecurityLab() {
                             const url = URL.createObjectURL(blob);
                             const a = document.createElement('a');
                             a.href = url;
-                            a.download = proto.model_file;
+                            a.download = proto.model_file.split('/').pop() || proto.model_file;
                             a.click();
                           }}
                           className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] flex items-center gap-1 transition-colors"
                         >
                           <Download size={12} />
-                          Download .pv
+                          Download Model File
                         </button>
                       )}
                     </div>
@@ -1026,7 +1072,7 @@ export default function SecurityLab() {
                     <div className="flex justify-between items-center pb-2 border-b border-slate-800">
                       <div className="flex items-center gap-2 text-slate-200 font-bold">
                         <Terminal size={16} className="text-emerald-400" />
-                        <span>Inria ProVerif Resolution Engine Execution Transcript</span>
+                        <span>{formalSummary.engine} Mathematical Verification Transcript</span>
                       </div>
                       <span className="text-[11px] text-slate-500">Formal Resolution Output</span>
                     </div>

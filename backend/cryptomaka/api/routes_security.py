@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from cryptomaka.database import ProtocolRun, SecurityTestResult, get_db
@@ -132,9 +132,12 @@ def simulate_playground_tampering(request: PlaygroundTamperRequest):
 
 
 @router.get("/formal-verification", response_model=FormalVerificationResponse)
-def get_formal_verification_summary():
+def get_formal_verification_summary(
+    engine: str = Query("proverif", pattern="^(proverif|tamarin|scyther)$"),
+):
     """
-    Retrieve formal verification proof results evaluated by ProVerif across Ju-Park, ECC, and ML-KEM.
+    Retrieve formal verification proof results evaluated across Ju-Park, ECC, and ML-KEM
+    using the specified formal verification engine (proverif, tamarin, or scyther).
     """
     import sys
     from pathlib import Path
@@ -142,24 +145,31 @@ def get_formal_verification_summary():
     if str(root) not in sys.path:
         sys.path.insert(0, str(root))
 
-    from research.formal_verification.runner import FormalVerificationRunner
+    from research.formal_verification.runner import FormalVerificationRunner, ENGINES_INFO
 
     runner = FormalVerificationRunner()
-    results = runner.verify_all()
-    has_binary = runner.has_proverif()
+    results = runner.verify_all(engine=engine)
+    has_binary = runner.has_engine_binary(engine)
+    engine_meta = ENGINES_INFO.get(engine, {})
 
     return FormalVerificationResponse(
-        engine="ProVerif (Applied Pi-Calculus in Dolev-Yao Model)",
-        version="2.05+",
+        engine=engine_meta.get("name", engine),
+        version=engine_meta.get("version", "1.0+"),
         has_binary=has_binary,
+        engine_id=engine,
+        supported_engines=runner.get_supported_engines(),
         results={k: v.to_dict() for k, v in results.items()},
     )
 
 
 @router.get("/formal-verification/{protocol_id}", response_model=FormalModelDetailResponse)
-def get_formal_verification_model_detail(protocol_id: str):
+def get_formal_verification_model_detail(
+    protocol_id: str,
+    engine: str = Query("proverif", pattern="^(proverif|tamarin|scyther)$"),
+):
     """
-    Retrieve raw ProVerif (.pv) model source code and certified execution proof transcript.
+    Retrieve raw model source code and certified execution proof transcript for a specific
+    protocol and verification engine (proverif, tamarin, or scyther).
     """
     import sys
     from pathlib import Path
@@ -167,21 +177,28 @@ def get_formal_verification_model_detail(protocol_id: str):
     if str(root) not in sys.path:
         sys.path.insert(0, str(root))
 
-    from research.formal_verification.runner import FormalVerificationRunner, MODELS
+    from research.formal_verification.runner import FormalVerificationRunner, ENGINE_MODELS
 
-    if protocol_id not in MODELS:
+    if engine not in ENGINE_MODELS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Engine '{engine}' not supported. Available: {list(ENGINE_MODELS.keys())}",
+        )
+
+    if protocol_id not in ENGINE_MODELS[engine]:
         raise HTTPException(
             status_code=404,
-            detail=f"Protocol model '{protocol_id}' not found. Available: {list(MODELS.keys())}",
+            detail=f"Protocol model '{protocol_id}' not found for engine '{engine}'. Available: {list(ENGINE_MODELS[engine].keys())}",
         )
 
     runner = FormalVerificationRunner()
-    model_file = MODELS[protocol_id]
-    source_code = runner.get_model_source(protocol_id)
-    transcript = runner.get_transcript(protocol_id)
+    model_file = ENGINE_MODELS[engine][protocol_id]
+    source_code = runner.get_model_source(protocol_id, engine=engine)
+    transcript = runner.get_transcript(protocol_id, engine=engine)
 
     return FormalModelDetailResponse(
         protocol_id=protocol_id,
+        engine=engine,
         model_file=model_file,
         source_code=source_code,
         transcript=transcript,

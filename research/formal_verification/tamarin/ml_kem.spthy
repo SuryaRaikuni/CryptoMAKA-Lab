@@ -1,0 +1,144 @@
+/* =========================================================================
+   CryptoMAKA Tamarin Prover Formal Verification Model: Post-Quantum ML-KEM-768
+   Model: Module-Lattice Key Encapsulation Mechanism in Three-Party MAKA
+   Engine: Tamarin Prover (IND-CCA2 KEM Equational Theory & Rewriting)
+   ========================================================================= */
+
+theory MLKEM768Protocol
+begin
+
+builtins: hashing, symmetric-encryption
+
+/* --- Key Encapsulation Mechanism (KEM) Equational Theory --- */
+functions: pk/1, kem_encaps_c/2, kem_encaps_k/2, kem_decaps/2, mac/2, shake256/2
+equations:
+    kem_decaps(sk, kem_encaps_c(pk(sk), r)) = kem_encaps_k(pk(sk), r)
+
+/* =========================================================================
+   1. Setup & Registration Rules
+   ========================================================================= */
+
+rule Init_Registration_Center:
+    [ Fr(~k_rc) ]
+  --[ RCInit($RC) ]->
+    [ !RCState($RC, ~k_rc) ]
+
+rule Register_Cloud_MLKEM:
+    let pk_s = pk(~sk_s)
+    in
+    [ !RCState($RC, ~k_rc), Fr(~sk_s), Fr(~k_s_rc) ]
+  --[ CloudRegistered($Cloud, $RC, pk_s) ]->
+    [ !CloudState($Cloud, $RC, ~sk_s, pk_s, ~k_s_rc),
+      !RCCloudStore($RC, $Cloud, pk_s, ~k_s_rc),
+      !PublicCloudKey($Cloud, pk_s),
+      Out(pk_s) ]
+
+rule Register_User_MLKEM:
+    [ !RCState($RC, ~k_rc), Fr(~k_u_rc) ]
+  --[ UserRegistered($User, $RC) ]->
+    [ !UserState($User, $RC, ~k_u_rc),
+      !RCUserStore($RC, $User, ~k_u_rc) ]
+
+/* =========================================================================
+   2. Protocol Handshake Rules
+   ========================================================================= */
+
+/* Step 1: User fetches Cloud's public key, encapsulates shared secret K_kem, sends M1 */
+rule User_Send_M1:
+    let c_kem = kem_encaps_c(pk_s, ~r_kem)
+        k_kem = kem_encaps_k(pk_s, ~r_kem)
+        auth_u = mac(<'m1', $User, $Cloud, c_kem, ~nu>, k_u_rc)
+        m1 = <$User, $Cloud, c_kem, ~nu, auth_u, ~ts1>
+    in
+    [ !UserState($User, $RC, k_u_rc),
+      !PublicCloudKey($Cloud, pk_s),
+      Fr(~r_kem), Fr(~nu), Fr(~ts1) ]
+  --[ UserStart($User, $Cloud, c_kem, ~nu) ]->
+    [ Out(m1), UserSession($User, $RC, $Cloud, k_u_rc, pk_s, ~r_kem, k_kem, c_kem, ~nu, ~ts1) ]
+
+/* Step 2: Cloud receives M1, generates nonce ~ns, sends M2 to RC */
+rule Cloud_Forward_M2:
+    let auth_s = mac(<'m2', $Cloud, $User, c_kem, ~ns>, k_s_rc)
+        m2 = <m1, $Cloud, ~ns, auth_s, ~ts2>
+    in
+    [ !CloudState($Cloud, $RC, sk_s, pk_s, k_s_rc),
+      In(<$User, $Cloud, c_kem, nu, auth_u, ts1>),
+      Fr(~ns), Fr(~ts2) ]
+  --[ CloudForward($Cloud, $User, c_kem, ~ns) ]->
+    [ Out(m2), CloudSession($Cloud, $RC, $User, sk_s, pk_s, k_s_rc, c_kem, nu, ~ns) ]
+
+/* Step 3: Registration Center verifies authenticators, delivers confirmation tickets */
+rule RC_Process_M2_Send_M3:
+    let m1 = <$User, $Cloud, c_kem, nu, auth_u, ts1>
+        expected_auth_u = mac(<'m1', $User, $Cloud, c_kem, nu>, k_u_rc)
+        expected_auth_s = mac(<'m2', $Cloud, $User, c_kem, ns>, k_s_rc)
+        ticket_s = senc(<'ticket_s', $User, c_kem, nu>, k_s_rc)
+        ticket_u = senc(<'ticket_u', $Cloud, c_kem, ns>, k_u_rc)
+        m3 = <ticket_s, ticket_u, ~ts3>
+    in
+    [ !RCUserStore($RC, $User, k_u_rc),
+      !RCCloudStore($RC, $Cloud, pk_s, k_s_rc),
+      In(<m1, $Cloud, ns, auth_s, ts2>),
+      Fr(~ts3) ]
+  --[ Eq(auth_u, expected_auth_u),
+      Eq(auth_s, expected_auth_s),
+      RCVerified($RC, $User, $Cloud) ]->
+    [ Out(m3) ]
+
+/* Step 4: Cloud decapsulates c_kem using sk_s, derives post-quantum session key SK_Cloud */
+rule Cloud_Finish_M3_Send_M4:
+    let k_kem = kem_decaps(sk_s, c_kem)
+        SK_Cloud = shake256(<k_kem, nu, ~ns>, 'session_key')
+        auth_m4 = mac(<'m4', $Cloud, SK_Cloud, ~ts4>, SK_Cloud)
+        m4 = <ticket_u, auth_m4, ~ts4>
+    in
+    [ CloudSession($Cloud, $RC, $User, sk_s, pk_s, k_s_rc, c_kem, nu, ~ns),
+      In(<senc(<'ticket_s', $User, c_kem, nu>, k_s_rc), ticket_u, ts3>),
+      Fr(~ts4) ]
+  --[ CloudCommit($Cloud, $User, SK_Cloud),
+      CloudDecaps($Cloud, k_kem) ]->
+    [ Out(m4), !CloudSessionKey($Cloud, $User, SK_Cloud) ]
+
+/* Step 5: User verifies ticket and M4 authenticator, derives SK_User */
+rule User_Finish_M4:
+    let SK_User = shake256(<k_kem, ~nu, ns>, 'session_key')
+        expected_auth_m4 = mac(<'m4', $Cloud, SK_User, ts4>, SK_User)
+    in
+    [ UserSession($User, $RC, $Cloud, k_u_rc, pk_s, ~r_kem, k_kem, c_kem, ~nu, ~ts1),
+      In(<senc(<'ticket_u', $Cloud, c_kem, ns>, k_u_rc), auth_m4, ts4>) ]
+  --[ Eq(auth_m4, expected_auth_m4),
+      UserCommit($User, $Cloud, SK_User),
+      UserEncaps($User, k_kem) ]->
+    [ !UserSessionKey($User, $Cloud, SK_User) ]
+
+/* =========================================================================
+   3. Verification Lemmas (PQ Secrecy & Injective Agreement)
+   ========================================================================= */
+
+restriction EqualityCheck:
+    "All x y #i. Eq(x, y) @i ==> x = y"
+
+/* 1. Protocol reaches valid completion */
+lemma Executability [exists-trace]:
+    exists-trace
+    "Ex u sj k #i #j. UserCommit(u, sj, k) @i & CloudCommit(sj, u, k) @j"
+
+/* 2. Post-Quantum Secrecy of User Session Key against Dolev-Yao Attacker */
+lemma Post_Quantum_Secrecy_SK_User:
+    "All u sj k #i. UserCommit(u, sj, k) @i ==> not (Ex #j. !KU(k) @j)"
+
+/* 3. Post-Quantum Secrecy of Cloud Session Key against Dolev-Yao Attacker */
+lemma Post_Quantum_Secrecy_SK_Cloud:
+    "All sj u k #i. CloudCommit(sj, u, k) @i ==> not (Ex #j. !KU(k) @j)"
+
+/* 4. Lattice Decapsulation Soundness */
+lemma Decapsulation_Soundness:
+    "All sj k #i. CloudDecaps(sj, k) @i ==> Ex u #j. UserEncaps(u, k) @j & #j < #i"
+
+/* 5. Injective Mutual Agreement */
+lemma Injective_Agreement_User_Cloud:
+    "All u sj k #i. UserCommit(u, sj, k) @i
+     ==> (Ex #j. CloudCommit(sj, u, k) @j & #j < #i
+          & not (Ex u2 #i2. UserCommit(u2, sj, k) @i2 & not (#i = #i2)))"
+
+end

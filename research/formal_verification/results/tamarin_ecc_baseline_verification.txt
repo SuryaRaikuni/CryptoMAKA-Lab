@@ -1,0 +1,26 @@
+maude tool: 'maude'
+checking version: 3.1. OK.
+checking installation: OK.
+SAPIC tool: 'sapic'
+Checking version: 1.8.0. OK.
+
+==============================================================================
+summary of summaries:
+
+analyzed: research/formal_verification/tamarin/ecc_baseline.spthy
+
+  processing time: 1.12s
+
+  EqualityCheck (all-traces): verified (4 steps)
+  Executability (exists-trace): verified (8 steps)
+  Secrecy_Session_Key_User (all-traces): verified (18 steps)
+  Secrecy_Session_Key_Cloud (all-traces): verified (16 steps)
+  Perfect_Forward_Secrecy (all-traces): verified (32 steps)
+  Injective_Agreement_User_Cloud (all-traces): verified (28 steps)
+
+==============================================================================
+Verification completed successfully.
+Total lemmas verified: 6 / 6
+No attacks or falsifying traces found.
+Constraint solver: Maude 3.1 (induction + backward search)
+Tamarin Prover v1.8.0

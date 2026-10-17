@@ -111,17 +111,23 @@ class FormalVerificationSummarySchema(BaseModel):
     syntax_validation: SyntaxValidationSchema
     features: list[str] = Field(default_factory=list)
     verification_time: float
+    engine: str = "proverif"
+    engine_name: str = "ProVerif"
+    engine_version: str = "2.05+"
 
 
 class FormalVerificationResponse(BaseModel):
     engine: str
     version: str
     has_binary: bool
+    engine_id: str = "proverif"
+    supported_engines: list[dict[str, Any]] = Field(default_factory=list)
     results: dict[str, FormalVerificationSummarySchema]
 
 
 class FormalModelDetailResponse(BaseModel):
     protocol_id: str
+    engine: str = "proverif"
     model_file: str
     source_code: str
     transcript: str
