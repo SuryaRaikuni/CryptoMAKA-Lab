@@ -221,3 +221,30 @@ def test_quantum_discrete_log_demo_api(client):
     data = r.json()
     assert data["success"] is True
     assert data["recovered_x"] == 1234
+
+
+def test_playground_sample_packet_api(client):
+    """GET /api/v1/security/playground/sample-packet should return packet structure."""
+    r = client.get("/api/v1/security/playground/sample-packet?protocol=ju_park")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["protocol"] == "ju_park"
+    assert "fields" in data
+    assert "field_descriptions" in data
+    assert "available_presets" in data
+
+
+def test_playground_simulate_tamper_api(client):
+    """POST /api/v1/security/playground/simulate should return verification diagnostics."""
+    r = client.post("/api/v1/security/playground/simulate", json={
+        "protocol": "ju_park",
+        "attack_preset": "bit_flip_mac",
+    })
+    assert r.status_code == 200
+    data = r.json()
+    assert data["protocol"] == "ju_park"
+    assert data["is_blocked"] is True
+    assert data["verdict"] == "BLOCKED"
+    assert data["dropped_by"] == "ControlServer"
+    assert len(data["logs"]) > 0
+    assert "V1" in data["tampered_fields"]

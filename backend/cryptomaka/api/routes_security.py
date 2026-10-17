@@ -8,7 +8,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from cryptomaka.database import ProtocolRun, SecurityTestResult, get_db
-from cryptomaka.schemas.security import SecurityRunRequest, SecurityRunResponse
+from cryptomaka.schemas.security import (
+    PlaygroundSamplePacketResponse,
+    PlaygroundTamperRequest,
+    PlaygroundTamperResponse,
+    SecurityRunRequest,
+    SecurityRunResponse,
+)
 from cryptomaka.security.runner import run_all_security_tests
 
 router = APIRouter(prefix="/security", tags=["security"])
@@ -95,3 +101,30 @@ def list_security_results(
         }
         for r in results
     ]
+
+
+@router.get("/playground/sample-packet", response_model=PlaygroundSamplePacketResponse)
+def get_playground_sample_packet(protocol: str = "ju_park"):
+    """Fetch sample packet and tampering parameters for the Interactive Security Playground."""
+    from cryptomaka.security.playground import get_sample_packet
+    allowed = {"ju_park", "ecc", "ml_kem"}
+    if protocol not in allowed:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Playground protocol must be one of: {list(allowed)}",
+        )
+    return get_sample_packet(protocol)
+
+
+@router.post("/playground/simulate", response_model=PlaygroundTamperResponse)
+def simulate_playground_tampering(request: PlaygroundTamperRequest):
+    """Execute an adversarial tamper simulation and return detailed verification telemetry."""
+    from cryptomaka.security.playground import simulate_tamper
+    allowed = {"ju_park", "ecc", "ml_kem"}
+    if request.protocol not in allowed:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Playground protocol must be one of: {list(allowed)}",
+        )
+    return simulate_tamper(request)
+
