@@ -284,3 +284,51 @@ def test_formal_verification_invalid_protocol_api(client):
     r = client.get("/api/v1/security/formal-verification/non_existent_protocol")
     assert r.status_code == 404
 
+
+def test_network_energy_profiles_api(client):
+    """GET /api/v1/benchmarks/network-energy/profiles returns network and hardware profiles."""
+    r = client.get("/api/v1/benchmarks/network-energy/profiles")
+    assert r.status_code == 200
+    data = r.json()
+    assert "network_profiles" in data
+    assert "hardware_profiles" in data
+    assert len(data["network_profiles"]) >= 5
+    assert len(data["hardware_profiles"]) >= 3
+
+
+def test_network_energy_simulate_api(client):
+    """POST /api/v1/benchmarks/network-energy/simulate returns latency and microjoule energy metrics."""
+    r = client.post("/api/v1/benchmarks/network-energy/simulate", json={
+        "network_profile": "nbiot",
+        "hardware_profile": "cortex_m4",
+        "handshakes_per_day": 24,
+        "battery_capacity_mah": 220.0,
+    })
+    assert r.status_code == 200
+    data = r.json()
+    assert data["network_profile"]["id"] == "nbiot"
+    assert data["hardware_profile"]["id"] == "cortex_m4"
+    assert "results" in data
+    assert "ju_park" in data["results"]
+    assert "ml_kem" in data["results"]
+
+    ju_park = data["results"]["ju_park"]
+    assert ju_park["total_energy_uj"] > 0
+    assert ju_park["total_latency_ms"] > 0
+    assert ju_park["estimated_battery_lifetime_years"] > 0
+
+
+def test_compare_benchmarks_with_mlkem_api(client):
+    """POST /api/v1/benchmarks/compare with ml_kem included."""
+    r = client.post("/api/v1/benchmarks/compare", json={
+        "protocols": ["ju_park", "ml_kem"],
+        "iterations": 2,
+        "warmup": 0,
+    })
+    assert r.status_code == 200
+    data = r.json()
+    assert "comparison" in data
+    assert "ju_park" in data["comparison"]
+    assert "ml_kem" in data["comparison"]
+
+

@@ -3,16 +3,28 @@
 from __future__ import annotations
 
 import uuid
+from dataclasses import asdict
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from cryptomaka.benchmarks.network_energy import (
+    HARDWARE_PROFILES,
+    NETWORK_PROFILES,
+    simulate_all_protocols,
+)
 from cryptomaka.benchmarks.runner import run_benchmark, run_comparison_benchmark
 from cryptomaka.database import BenchmarkResult, ProtocolRun, get_db
 from cryptomaka.schemas.benchmarks import (
     BenchmarkRunRequest,
     BenchmarkRunResponse,
     ComparisonRunRequest,
+    HardwareProfileSchema,
+    NetworkEnergyProfilesResponse,
+    NetworkEnergySimulateRequest,
+    NetworkEnergySimulateResponse,
+    NetworkProfileSchema,
+    ProtocolNetworkEnergySimulationSchema,
 )
 
 router = APIRouter(prefix="/benchmarks", tags=["benchmarks"])
@@ -24,7 +36,7 @@ def run_benchmark_endpoint(
     db: Session = Depends(get_db),
 ):
     """Run a benchmark for the specified protocol."""
-    allowed = {"ju_park", "ecc", "reduced_roundtrip"}
+    allowed = {"ju_park", "ecc", "reduced_roundtrip", "ml_kem"}
     if request.protocol not in allowed:
         raise HTTPException(
             status_code=400,
@@ -89,7 +101,7 @@ def compare_benchmarks(
     db: Session = Depends(get_db),
 ):
     """Run benchmarks for multiple protocols and compare results."""
-    allowed = {"ju_park", "ecc", "reduced_roundtrip"}
+    allowed = {"ju_park", "ecc", "reduced_roundtrip", "ml_kem"}
     for p in request.protocols:
         if p not in allowed:
             raise HTTPException(
@@ -161,3 +173,46 @@ def list_benchmarks(
         }
         for r in results
     ]
+
+
+@router.get("/network-energy/profiles", response_model=NetworkEnergyProfilesResponse)
+def get_network_energy_profiles():
+    """Return available wireless network channels and embedded hardware MCU profiles."""
+    return NetworkEnergyProfilesResponse(
+        network_profiles=[NetworkProfileSchema(**asdict(p)) for p in NETWORK_PROFILES.values()],
+        hardware_profiles=[HardwareProfileSchema(**asdict(h)) for h in HARDWARE_PROFILES.values()],
+    )
+
+
+@router.post("/network-energy/simulate", response_model=NetworkEnergySimulateResponse)
+def simulate_network_energy(request: NetworkEnergySimulateRequest):
+    """Simulate transmission latency, MTU packet fragmentation, and microjoule energy consumption."""
+    if request.network_profile not in NETWORK_PROFILES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown network profile '{request.network_profile}'. Available: {list(NETWORK_PROFILES.keys())}",
+        )
+    if request.hardware_profile not in HARDWARE_PROFILES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown hardware profile '{request.hardware_profile}'. Available: {list(HARDWARE_PROFILES.keys())}",
+        )
+
+    report = simulate_all_protocols(
+        network_id=request.network_profile,
+        hardware_id=request.hardware_profile,
+        handshakes_per_day=request.handshakes_per_day,
+        battery_capacity_mah=request.battery_capacity_mah,
+    )
+
+    return NetworkEnergySimulateResponse(
+        network_profile=NetworkProfileSchema(**asdict(report.network_profile)),
+        hardware_profile=HardwareProfileSchema(**asdict(report.hardware_profile)),
+        battery_capacity_mah=report.battery_capacity_mah,
+        handshakes_per_day=report.handshakes_per_day,
+        results={
+            k: ProtocolNetworkEnergySimulationSchema(**asdict(v))
+            for k, v in report.results.items()
+        },
+    )
+

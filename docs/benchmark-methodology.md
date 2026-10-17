@@ -96,3 +96,40 @@ Every benchmark execution generates an immutable JSON structure:
   ]
 }
 ```
+
+---
+
+## 5. Cyber-Physical IoT Wireless Channel & Microjoule Energy Modeling
+
+To bridge the gap between high-speed desktop/server simulation and constrained edge IoT deployments, CryptoMAKA Lab incorporates a **cyber-physical wireless network and energy consumption engine** (`cryptomaka.benchmarks.network_energy`).
+
+### 5.1 Wireless Channel Profiles & MTU Fragmentation
+Handshake messages are mapped across standard LPWAN and cellular IoT specifications:
+
+| Channel Profile | Standard / Technology | Uplink Bandwidth | Base RTT | Payload MTU | Typical Application |
+|---|---|---|---|---|---|
+| **`lorawan_dr0`** | LoRaWAN EU868 SF12 | 250 bps | 1,200 ms | **51 Bytes** | Long-range smart metering & agriculture |
+| **`lorawan_dr3`** | LoRaWAN EU868 SF9 | 1.76 kbps | 450 ms | **115 Bytes** | Urban sensor networks |
+| **`nbiot`** | 3GPP Cat-NB1 | 64 kbps | 350 ms | 1,600 Bytes | Smart utility grid & asset tracking |
+| **`ltem`** | 3GPP Cat-M1 | 1,000 kbps | 85 ms | 1,500 Bytes | Wearables, healthcare & fleet telematics |
+| **`fiveg_iot`** | 5G Standalone URLLC | 50,000 kbps | 4 ms | 1,500 Bytes | Mission-critical factory automation |
+| **`lan_unconstrained`** | IEEE 802.3 Gigabit | 1,000,000 kbps | 0.5 ms | 1,500 Bytes | High-speed local testbed baseline |
+
+When a protocol message exceeds the channel MTU:
+$$\text{Fragments} = \left\lceil \frac{\text{Message Size}}{\text{MTU}} \right\rceil$$
+The transmission latency accumulates transmission time and scheduling delays across all fragments:
+$$T_{\text{network}} = \sum \left( \frac{\text{Size} \times 8}{\text{Bandwidth}} + (\text{Fragments} \times T_{\text{RTT\_base}}) \right)$$
+
+### 5.2 Microjoule Energy Consumption Model
+Embedded IoT microcontrollers (ARM Cortex-M4 @ 64 MHz, ESP32, and Raspberry Pi Zero) are modeled with operating voltage $V$, active computing current $I_{\text{cpu}}$, wireless radio transmission current $I_{\text{tx}}$, and reception current $I_{\text{rx}}$:
+$$E_{\text{cpu}} = V \cdot I_{\text{cpu}} \cdot T_{\text{compute}} \quad (\mu\text{J})$$
+$$E_{\text{radio}} = V \cdot \left( \frac{I_{\text{tx}} + I_{\text{rx}}}{2} \right) \cdot T_{\text{network}} \quad (\mu\text{J})$$
+$$E_{\text{total}} = E_{\text{cpu}} + E_{\text{radio}}$$
+
+### 5.3 Battery Lifespan Projection
+Given a battery capacity $C_{\text{mAh}}$ (e.g. CR2032 coin cell @ $220\text{ mAh}$ / $3.0\text{V} = 2,376\text{ J}$), sleep current $I_{\text{sleep}}$, and duty cycle ($N$ handshakes/day):
+$$E_{\text{daily}} = \left( N \cdot \frac{E_{\text{total}}}{10^6} \right) + (V \cdot I_{\text{sleep}} \cdot 86400) \quad (\text{Joules})$$
+$$\text{Battery Lifespan (Years)} = \frac{C_{\text{mAh}} \cdot V \cdot 3.6}{E_{\text{daily}} \cdot 365.25}$$
+
+This quantitative model explains the trade-off in modern cryptography: post-quantum KEMs (ML-KEM-768) incur heavy fragmentation over LPWAN (96 fragments on LoRaWAN DR0), multiplying battery drain, whereas lightweight symmetric schemes (Ju-Park) complete in few packets, preserving battery life for years.
+
