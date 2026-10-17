@@ -2,17 +2,12 @@
 Unit tests for the Multi-Engine Formal Verification Suite (ProVerif, Tamarin Prover, Scyther).
 """
 
-from pathlib import Path
 import pytest
 
 from research.formal_verification.runner import (
-    FormalVerificationRunner,
-    MODELS,
     ENGINE_MODELS,
-    ENGINES_INFO,
-    PROTOCOL_METADATA,
-    FormalQuery,
-    ProtocolProofSummary,
+    MODELS,
+    FormalVerificationRunner,
 )
 
 

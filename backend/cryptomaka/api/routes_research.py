@@ -64,8 +64,6 @@ def download_academic_paper(format: str = Query(default="pdf", pattern="^(pdf|te
     in Camera-Ready PDF format or standalone IEEEtran LaTeX (.tex) format.
     """
     from research.paper_generator.academic_paper_generator import (
-        DEFAULT_PDF_OUTPUT,
-        DEFAULT_TEX_OUTPUT,
         AcademicPaperGenerator,
     )
 

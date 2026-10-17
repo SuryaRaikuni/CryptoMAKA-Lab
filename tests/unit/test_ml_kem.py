@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-
 # ---------------------------------------------------------------------------
 # KEM primitive tests
 # ---------------------------------------------------------------------------
 
 def test_mlkem_keypair_creation():
     """MLKEMKeypair should generate a 1184-byte (9472-bit) public key."""
-    from cryptomaka.protocols.ml_kem import MLKEMKeypair, MLKEM_PUBLIC_KEY_BYTES
+    from cryptomaka.protocols.ml_kem import MLKEM_PUBLIC_KEY_BYTES, MLKEMKeypair
     kp = MLKEMKeypair()
     assert len(kp.public_key) == MLKEM_PUBLIC_KEY_BYTES, (
         f"Expected public key of {MLKEM_PUBLIC_KEY_BYTES} bytes, got {len(kp.public_key)}"
@@ -40,7 +39,7 @@ def test_mlkem_kem_cross_keypair():
 
 def test_mlkem_ciphertext_size():
     """Ciphertext should be exactly 1088 bytes (ML-KEM-768 wire size per FIPS 203)."""
-    from cryptomaka.protocols.ml_kem import MLKEMKeypair, MLKEM_CIPHERTEXT_BYTES
+    from cryptomaka.protocols.ml_kem import MLKEM_CIPHERTEXT_BYTES, MLKEMKeypair
     kp = MLKEMKeypair()
     ciphertext, _ = kp.encapsulate(kp.public_key)
     assert len(ciphertext) == MLKEM_CIPHERTEXT_BYTES, (
@@ -73,9 +72,7 @@ def test_mlkem_registration():
 
 def test_mlkem_full_protocol_session_key_match():
     """Full ML-KEM MAKA handshake: user and cloud derive identical session keys."""
-    from cryptomaka.protocols.ml_kem import (
-        MLKEMRegistrationCentre, MLKEMCloudServer, MLKEMUser
-    )
+    from cryptomaka.protocols.ml_kem import MLKEMCloudServer, MLKEMRegistrationCentre, MLKEMUser
     rc = MLKEMRegistrationCentre()
     cs = MLKEMCloudServer("cloud-mlkem-test")
     user = MLKEMUser("alice", "correct-horse-battery", "fingerprint-xyz")
@@ -94,9 +91,7 @@ def test_mlkem_full_protocol_session_key_match():
 
 def test_mlkem_tampered_user_authenticator_rejected():
     """Tampering with Auth_u in M1 should cause RC to reject the authentication."""
-    from cryptomaka.protocols.ml_kem import (
-        MLKEMRegistrationCentre, MLKEMCloudServer, MLKEMUser
-    )
+    from cryptomaka.protocols.ml_kem import MLKEMCloudServer, MLKEMRegistrationCentre, MLKEMUser
     rc = MLKEMRegistrationCentre()
     cs = MLKEMCloudServer("cloud-mlkem-tamper-test")
     user = MLKEMUser("alice", "correct-horse-battery", "fingerprint-xyz")
@@ -113,9 +108,7 @@ def test_mlkem_tampered_user_authenticator_rejected():
 
 def test_mlkem_replay_nonce_rejected():
     """Reusing the same nonce in a second authentication should be rejected."""
-    from cryptomaka.protocols.ml_kem import (
-        MLKEMRegistrationCentre, MLKEMCloudServer, MLKEMUser
-    )
+    from cryptomaka.protocols.ml_kem import MLKEMCloudServer, MLKEMRegistrationCentre, MLKEMUser
     rc = MLKEMRegistrationCentre()
     cs = MLKEMCloudServer("cloud-mlkem-replay-test")
     user = MLKEMUser("alice", "correct-horse-battery", "fingerprint-xyz")
@@ -165,7 +158,8 @@ def test_mlkem_run_protocol_notes_disclaimer():
 def test_mlkem_communication_bits_fips203_sizes():
     """Communication cost should reflect ML-KEM-768 wire sizes (PK=1184B, CT=1088B)."""
     from cryptomaka.protocols.ml_kem import (
-        MLKEM_PUBLIC_KEY_BYTES, MLKEM_CIPHERTEXT_BYTES, run_protocol
+        MLKEM_CIPHERTEXT_BYTES,
+        run_protocol,
     )
     result = run_protocol()
     # Minimum lower bound: 2 messages containing ciphertext (1088*8 bits each)

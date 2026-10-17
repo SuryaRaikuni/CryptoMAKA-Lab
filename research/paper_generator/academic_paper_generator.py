@@ -8,13 +8,22 @@ a camera-ready academic research paper.
 
 from __future__ import annotations
 
-import io
-import os
 import sys
-import time
-from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
+
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.pdfgen import canvas
+from reportlab.platypus import (
+    HRFlowable,
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 BACKEND_DIR = PROJECT_ROOT / "backend"
@@ -23,28 +32,9 @@ if str(PROJECT_ROOT) not in sys.path:
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import letter
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-from reportlab.pdfgen import canvas
-from reportlab.platypus import (
-    HRFlowable,
-    KeepTogether,
-    PageBreak,
-    Paragraph,
-    SimpleDocTemplate,
-    Spacer,
-    Table,
-    TableStyle,
-)
+from cryptomaka.benchmarks.network_energy import simulate_all_protocols  # noqa: E402
 
-from cryptomaka.benchmarks.communication import (
-    ecc_communication_report,
-    jupark_communication_report,
-    mlkem_communication_report,
-)
-from cryptomaka.benchmarks.network_energy import simulate_all_protocols
-from research.formal_verification.runner import FormalVerificationRunner
+from research.formal_verification.runner import FormalVerificationRunner  # noqa: E402
 
 BASE_DIR = Path(__file__).resolve().parent
 DEFAULT_PDF_OUTPUT = BASE_DIR / "CryptoMAKA_Academic_Manuscript.pdf"
@@ -139,16 +129,6 @@ class AcademicPaperGenerator:
             textColor=colors.HexColor("#334155"),
         )
 
-        abstract_title_style = ParagraphStyle(
-            "AbstractTitle",
-            parent=styles["Normal"],
-            fontName="Times-BoldItalic",
-            fontSize=9.5,
-            leading=12,
-            alignment=0,
-            textColor=colors.HexColor("#0F172A"),
-        )
-
         abstract_body_style = ParagraphStyle(
             "AbstractBody",
             parent=styles["Normal"],
@@ -170,18 +150,6 @@ class AcademicPaperGenerator:
             spaceAfter=5,
             keepWithNext=True,
             textColor=colors.HexColor("#0F172A"),
-        )
-
-        h2_style = ParagraphStyle(
-            "Heading2_Academic",
-            parent=styles["Normal"],
-            fontName="Times-BoldItalic",
-            fontSize=9.5,
-            leading=12.5,
-            spaceBefore=8,
-            spaceAfter=3,
-            keepWithNext=True,
-            textColor=colors.HexColor("#1E293B"),
         )
 
         body_style = ParagraphStyle(
@@ -311,10 +279,6 @@ class AcademicPaperGenerator:
         )
 
         # Table 1: Communication Specs
-        jp_comm = jupark_communication_report()
-        ecc_comm = ecc_communication_report()
-        ml_comm = mlkem_communication_report()
-
         table1_data = [
             [
                 Paragraph("<b>Protocol Architecture</b>", table_header_style),
@@ -616,7 +580,6 @@ class AcademicPaperGenerator:
 
         nbiot_sim = simulate_all_protocols("nbiot", "cortex_m4", handshakes_per_day=24)
         lora_sim = simulate_all_protocols("lorawan_dr0", "cortex_m4", handshakes_per_day=24)
-        formal_results = self.proverif_runner.verify_all()
 
         tex_content = r"""\documentclass[journal,10pt,twocolumn]{IEEEtran}
 \usepackage{cite}
@@ -743,6 +706,6 @@ if __name__ == "__main__":
     print("=" * 70)
     print("CryptoMAKA Academic Manuscript Generator")
     print("=" * 70)
-    print(f"[+] Camera-Ready PDF Generated:   {pdf_path} ({os.path.getsize(pdf_path)} bytes)")
-    print(f"[+] Standalone LaTeX Generated:    {tex_path} ({os.path.getsize(tex_path)} bytes)")
+    print(f"[+] Camera-Ready PDF Generated:   {pdf_path} ({pdf_path.stat().st_size} bytes)")
+    print(f"[+] Standalone LaTeX Generated:    {tex_path} ({tex_path.stat().st_size} bytes)")
     print("=" * 70)

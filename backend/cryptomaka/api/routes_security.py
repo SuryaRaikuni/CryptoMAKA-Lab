@@ -145,7 +145,7 @@ def get_formal_verification_summary(
     if str(root) not in sys.path:
         sys.path.insert(0, str(root))
 
-    from research.formal_verification.runner import FormalVerificationRunner, ENGINES_INFO
+    from research.formal_verification.runner import ENGINES_INFO, FormalVerificationRunner
 
     runner = FormalVerificationRunner()
     results = runner.verify_all(engine=engine)
@@ -177,7 +177,7 @@ def get_formal_verification_model_detail(
     if str(root) not in sys.path:
         sys.path.insert(0, str(root))
 
-    from research.formal_verification.runner import FormalVerificationRunner, ENGINE_MODELS
+    from research.formal_verification.runner import ENGINE_MODELS, FormalVerificationRunner
 
     if engine not in ENGINE_MODELS:
         raise HTTPException(

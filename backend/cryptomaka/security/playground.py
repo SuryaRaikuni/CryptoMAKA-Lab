@@ -68,12 +68,6 @@ def get_sample_packet(protocol: str = "ju_park") -> PlaygroundSamplePacketRespon
         user.register(rc)
         m1, _, _ = user.start_login()
 
-        fields = {
-            "Pu": m1["Pu"][:32] + "..." + m1["Pu"][-16:],
-            "Ni": m1["Ni"],
-            "T1": int(m1["T1"]),
-            "Vi": m1["Vi"],
-        }
         raw_fields = dict(m1)
         raw_fields["T1"] = int(m1["T1"])
 
@@ -198,7 +192,6 @@ def _simulate_jupark_tamper(
         User,
         hx,
         rand32,
-        ts,
     )
 
     log("INFO", "ControlServer", "Initializing trusted registration authority (CS)...")
@@ -454,7 +447,6 @@ def _simulate_ecc_tamper(
         m2, _, _, reason = cs.respond_to_login(rc, user.user_id, m1_captured)
         elapsed = round((time.perf_counter() - start_time) * 1000, 3)
 
-        blocked = m2 is None
         log("DROP", "ControlServer", f"[REJECTION] Control Server rejected replayed M1: '{reason}'.")
         return PlaygroundTamperResponse(
             protocol="ecc",
@@ -595,7 +587,6 @@ def _simulate_mlkem_tamper(
         m2, _, reason = cs.process_authentication(rc, m1_captured)
         elapsed = round((time.perf_counter() - start_time) * 1000, 3)
 
-        blocked = m2 is None
         log("DROP", "RegistrationCentre", f"[REJECTION] RC rejected replayed M1: '{reason}'.")
         return PlaygroundTamperResponse(
             protocol="ml_kem",

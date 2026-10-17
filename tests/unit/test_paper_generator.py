@@ -3,13 +3,11 @@ Unit tests for the Academic Paper Generator (PDF & LaTeX).
 """
 
 import os
-from pathlib import Path
+
 import pytest
 
 from research.paper_generator.academic_paper_generator import (
     AcademicPaperGenerator,
-    DEFAULT_PDF_OUTPUT,
-    DEFAULT_TEX_OUTPUT,
 )
 
 

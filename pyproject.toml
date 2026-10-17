@@ -42,6 +42,9 @@ line-length = 100
 select = ["E", "F", "I"]
 ignore = ["E501"]
 
+[tool.ruff.lint.per-file-ignores]
+"research/*" = ["E402"]
+
 [tool.mypy]
 python_version = "3.12"
 warn_return_any = true

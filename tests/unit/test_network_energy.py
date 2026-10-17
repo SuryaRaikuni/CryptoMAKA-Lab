@@ -3,7 +3,6 @@ Unit tests for IoT Wireless Latency and Microjoule Energy Consumption Modeling.
 """
 
 import pytest
-
 from cryptomaka.benchmarks.network_energy import (
     HARDWARE_PROFILES,
     NETWORK_PROFILES,

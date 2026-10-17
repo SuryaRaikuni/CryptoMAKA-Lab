@@ -48,7 +48,6 @@ References:
 from __future__ import annotations
 
 import hashlib
-import hmac
 import os
 import time
 from dataclasses import dataclass, field
@@ -352,8 +351,6 @@ class MLKEMUser:
         if self._smart_card is None:
             raise RuntimeError("User is not registered")
 
-        h_id = self._smart_card["h_id"]
-
         # Verify cloud server authenticator
         expected_auth_cs = H3_hex(
             m1["user_id"], m1["PK_u"], m1["nonce_u"], m1["T1"],
@@ -466,7 +463,7 @@ def run_protocol() -> dict:
         cs = MLKEMCloudServer("cloud-mlkem-1")
         user = MLKEMUser(
             user_id="alice",
-            password="correct-horse-battery",
+            password="correct-horse-battery",  # nosec B106
             biometric="fingerprint-template-xyz",
         )
 

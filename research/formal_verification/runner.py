@@ -271,12 +271,12 @@ class FormalVerificationRunner:
         engine = engine.lower()
         if engine == "tamarin":
             filename = f"tamarin_{protocol_id}_verification.txt"
-            alt_filename = f"tamarin_ecc_baseline_verification.txt" if protocol_id == "ecc" else filename
+            alt_filename = "tamarin_ecc_baseline_verification.txt" if protocol_id == "ecc" else filename
             p = self.results_dir / alt_filename
             return p if p.is_file() else (self.results_dir / filename)
         elif engine == "scyther":
             filename = f"scyther_{protocol_id}_verification.txt"
-            alt_filename = f"scyther_ecc_baseline_verification.txt" if protocol_id == "ecc" else filename
+            alt_filename = "scyther_ecc_baseline_verification.txt" if protocol_id == "ecc" else filename
             p = self.results_dir / alt_filename
             return p if p.is_file() else (self.results_dir / filename)
         else:

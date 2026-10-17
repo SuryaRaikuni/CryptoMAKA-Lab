@@ -58,7 +58,7 @@ The automated security evaluation engine (`cryptomaka.security.runner`) executes
 | Attack Vector | Simulated Action | Ju-Park (2023) | ECC P-256 Baseline | Reduced Round-trip | Defense Mechanism |
 |---------------|------------------|----------------|--------------------|--------------------|-------------------|
 | **Replay Attack** | Re-transmitting eavesdropped $M_1$ | **Blocked** | **Blocked** | **Blocked** | Random nonce freshness & ephemeral replay cache |
-| **Stale Timestamp** | Modifying timestamp $T > \Delta T$ | **Blocked** | **Blocked** | **Blocked** | Strict window verification ($|T_{rec} - T_{cur}| \le 5\,\text{s}$) |
+| **Stale Timestamp** | Modifying timestamp $T > \Delta T$ | **Blocked** | **Blocked** | **Blocked** | Strict window verification ($\|T_{rec} - T_{cur}\| \le 5\,\text{s}$) |
 | **Bit Tampering** | Single-bit alteration in ciphertext/hash | **Blocked** | **Blocked** | **Blocked** | Cryptographic MAC / SHA-256 digest validation |
 | **User Impersonation** | Injecting unauthenticated credentials | **Blocked** | **Blocked** | **Blocked** | Pre-shared master secret verification & ECDSA verification |
 | **Man-in-the-Middle (MitM)** | Intercepting and re-encrypting tokens | **Blocked** | **Blocked** | **Blocked** | Dual-party challenge-response mutual verification |
