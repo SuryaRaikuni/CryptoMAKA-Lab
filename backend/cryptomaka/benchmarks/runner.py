@@ -17,6 +17,7 @@ from typing import Any
 from cryptomaka.benchmarks.communication import (
     ecc_communication_report,
     jupark_communication_report,
+    mlkem_communication_report,
 )
 from cryptomaka.benchmarks.metrics import compute_metrics
 from cryptomaka.config import get_settings
@@ -120,10 +121,47 @@ def _reduced_single_run_ns() -> tuple[int, int, int]:
     return 0, total_ns, total_ns
 
 
+def _mlkem_single_run_ns() -> tuple[int, int, int]:
+    """
+    Run one complete ML-KEM-768 protocol session.
+    Returns (registration_ns, authentication_ns, total_ns).
+    """
+    from cryptomaka.protocols.ml_kem import (
+        MLKEMCloudServer,
+        MLKEMRegistrationCentre,
+        MLKEMUser,
+    )
+
+    rc = MLKEMRegistrationCentre()
+    cs = MLKEMCloudServer("bench-cloud-mlkem")
+    user = MLKEMUser("bench-user", "bench-pw", "bench-bio")
+
+    t_reg_start = time.perf_counter_ns()
+    user.register(rc)
+    t_reg_end = time.perf_counter_ns()
+
+    t_auth_start = time.perf_counter_ns()
+    try:
+        m1, _ = user.start_authentication()
+        m2, sk_server, reason = cs.process_authentication(rc, m1)
+        if m2 is not None:
+            user.verify_and_derive_key(m1, m2)
+    except Exception as e:
+        logging.warning(f"ML-KEM protocol run failed: {e}")
+    t_auth_end = time.perf_counter_ns()
+
+    reg_ns = t_reg_end - t_reg_start
+    auth_ns = t_auth_end - t_auth_start
+    total_ns = reg_ns + auth_ns
+
+    return reg_ns, auth_ns, total_ns
+
+
 _PROTOCOL_RUNNERS = {
     "ju_park": _jupark_single_run_ns,
     "ecc": _ecc_single_run_ns,
     "reduced_roundtrip": _reduced_single_run_ns,
+    "ml_kem": _mlkem_single_run_ns,
 }
 
 
@@ -187,6 +225,9 @@ def run_benchmark(
     elif protocol == "ecc":
         comm_report = ecc_communication_report()
         comm_bits = comm_report["implementation_bits"]
+    elif protocol == "ml_kem":
+        comm_report = mlkem_communication_report()
+        comm_bits = comm_report["implementation_bits"]
     else:
         comm_report = {}
         comm_bits = None
@@ -211,7 +252,7 @@ def run_comparison_benchmark(
 ) -> dict[str, Any]:
     """Run benchmarks for multiple protocols and return a comparison."""
     if protocols is None:
-        protocols = ["ju_park", "ecc", "reduced_roundtrip"]
+        protocols = ["ju_park", "ecc", "reduced_roundtrip", "ml_kem"]
 
     results = {}
     for protocol in protocols:

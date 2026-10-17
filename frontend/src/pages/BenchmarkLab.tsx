@@ -24,7 +24,7 @@ export default function BenchmarkLab() {
     setError('');
     try {
       const data = await api.post('/benchmarks/compare', {
-        protocols: ['ju_park', 'ecc', 'reduced_roundtrip'],
+        protocols: ['ju_park', 'ecc', 'reduced_roundtrip', 'ml_kem'],
         iterations: count,
         warmup: 10
       });
@@ -36,10 +36,20 @@ export default function BenchmarkLab() {
     }
   };
 
+  const getProtocolLabel = (proto: string) => {
+    switch (proto) {
+      case 'ju_park': return 'Ju-Park 2023';
+      case 'ecc': return 'ECC P-256';
+      case 'reduced_roundtrip': return 'Reduced-RTT';
+      case 'ml_kem': return 'ML-KEM-768 (PQ)';
+      default: return proto;
+    }
+  };
+
   const getLatencyChartData = () => {
     if (!report) return [];
     return report.results.map((r: any) => ({
-      name: r.protocol === 'ju_park' ? 'Ju-Park 2023' : r.protocol === 'ecc' ? 'ECC P-256' : 'Reduced-RTT',
+      name: getProtocolLabel(r.protocol),
       'Mean (ms)': Number(r.total.mean_ms.toFixed(3)),
       'Min (ms)': Number(r.total.min_ms.toFixed(3)),
       'Max (ms)': Number(r.total.max_ms.toFixed(3)),
@@ -49,7 +59,7 @@ export default function BenchmarkLab() {
   const getThroughputChartData = () => {
     if (!report) return [];
     return report.results.map((r: any) => ({
-      name: r.protocol === 'ju_park' ? 'Ju-Park 2023' : r.protocol === 'ecc' ? 'ECC P-256' : 'Reduced-RTT',
+      name: getProtocolLabel(r.protocol),
       'Throughput (ops/sec)': Math.round(r.total.throughput_ops_per_sec),
     }));
   };
@@ -60,6 +70,7 @@ export default function BenchmarkLab() {
       { name: 'Ju-Park (Normalized)', 'Bits': 4224, type: 'Normalized Measurement' },
       { name: 'ECC P-256', 'Bits': 1872, type: 'Implementation Measurement' },
       { name: 'Proposed Extension', 'Bits': 3616, type: 'Implementation Measurement' },
+      { name: 'ML-KEM-768 (FIPS 203)', 'Bits': 38656, type: 'Post-Quantum Baseline' },
     ];
   };
 
@@ -225,7 +236,7 @@ export default function BenchmarkLab() {
                 {report.results.map((r: any, idx: number) => (
                   <tr key={idx} className="hover:bg-gray-50 font-sans">
                     <td className="px-5 py-3.5 whitespace-nowrap font-medium text-gray-900">
-                      {r.protocol === 'ju_park' ? 'Ju-Park 2023 (Hash/XOR)' : r.protocol === 'ecc' ? 'ECC P-256 (ECDH)' : 'Proposed Reduced-RTT'}
+                      {getProtocolLabel(r.protocol)}
                     </td>
                     <td className="px-5 py-3.5 whitespace-nowrap text-right font-mono font-semibold text-indigo-700">
                       {r.total.mean_ms.toFixed(3)} ms

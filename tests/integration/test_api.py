@@ -24,7 +24,7 @@ def test_health_endpoint(client):
 
 
 def test_list_protocols(client):
-    """GET /api/v1/protocols should return 3 protocols."""
+    """GET /api/v1/protocols should return 4 protocols including ML-KEM."""
     r = client.get("/api/v1/protocols")
     assert r.status_code == 200
     protocols = r.json()
@@ -33,6 +33,7 @@ def test_list_protocols(client):
     assert "ju_park" in ids
     assert "ecc" in ids
     assert "reduced_roundtrip" in ids
+    assert "ml_kem" in ids
 
 
 def test_run_jupark_protocol(client):
@@ -56,6 +57,19 @@ def test_run_ecc_protocol(client):
     assert data["protocol"] == "ecc"
     assert data["authentication_success"] is True
     assert data["session_key_match"] is True
+
+
+def test_run_ml_kem_protocol(client):
+    """POST /api/v1/protocols/ml_kem/run should return successful ML-KEM run."""
+    r = client.post("/api/v1/protocols/ml_kem/run")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["protocol"] == "ml_kem"
+    assert data["authentication_success"] is True
+    assert data["session_key_match"] is True
+    assert data["message_count"] == 4
+    assert data["communication_bits"] > 0
+
 
 
 def test_run_reduced_roundtrip(client):

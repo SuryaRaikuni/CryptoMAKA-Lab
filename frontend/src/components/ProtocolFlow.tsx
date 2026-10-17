@@ -208,51 +208,143 @@ export const ProtocolFlow: React.FC<ProtocolFlowProps> = ({ protocolId, messages
     }
 
     // Proposed Reduced Roundtrip
-    if (stepIndex === 0) {
+    if (protocolId === 'reduced_roundtrip') {
+      if (stepIndex === 0) {
+        return {
+          title: 'Message M1: Initial IoT Authentication Request',
+          sender: 'user',
+          receiver: 'cloud',
+          directionText: 'User (Ui) → Cloud Server (Sj)',
+          sizeBits: 1056,
+          parameters: [
+            { symbol: 'PIDi', meaning: 'User pseudonym', formula: 'H(IDi ∥ ni ∥ xcs)' },
+            { symbol: 'B1, B2', meaning: 'Masked nonce & masked destination cloud', formula: 'XOR masking with ki and SIDi' },
+            { symbol: 'V1', meaning: 'Ticket authenticator', formula: 'MAC over TS1, SIDi, ki, ri' },
+          ],
+          localComputation: ['User evaluates local credentials and constructs request.'],
+        };
+      }
+      if (stepIndex === 1) {
+        return {
+          title: 'Message M2: Aggregated Request to Control Server',
+          sender: 'cloud',
+          receiver: 'cs',
+          directionText: 'Cloud Server (Sj) → Control Server (CS)',
+          sizeBits: 1600,
+          parameters: [
+            { symbol: 'M1', meaning: 'Forwarded user payload', formula: '{PIDi, B1, B2, V1, TS1}' },
+            { symbol: 'B3, V2', meaning: 'Cloud nonce & authenticator', formula: 'Masked rj and V2' },
+          ],
+          localComputation: ['Cloud server adds cloud authentication payload.'],
+        };
+      }
       return {
-        title: 'Message M1: Initial IoT Authentication Request',
-        sender: 'user',
-        receiver: 'cloud',
-        directionText: 'User (Ui) → Cloud Server (Sj)',
-        sizeBits: 1056,
+        title: 'Message M3: Proposed Combined Response & Relay',
+        sender: 'cs',
+        receiver: 'user',
+        directionText: 'Control Server (CS) → Cloud (Sj) → User (Ui)',
+        sizeBits: 1824,
         parameters: [
-          { symbol: 'PIDi', meaning: 'User pseudonym', formula: 'H(IDi ∥ ni ∥ xcs)' },
-          { symbol: 'B1, B2', meaning: 'Masked nonce & masked destination cloud', formula: 'XOR masking with ki and SIDi' },
-          { symbol: 'V1', meaning: 'Ticket authenticator', formula: 'MAC over TS1, SIDi, ki, ri' },
+          { symbol: 'V3, V4', meaning: 'Dual verification tokens for Cloud and User', formula: 'Consolidated into single response' },
+          { symbol: 'B6, B8', meaning: 'Relayed session parameters', formula: 'Single round-trip reduction' },
         ],
-        localComputation: ['User evaluates local credentials and constructs request.'],
+        localComputation: [
+          'Combines cloud and user notification into a single pass.',
+          'Saves 1 round-trip latency compared to Ju-Park.'
+        ]
       };
     }
-    if (stepIndex === 1) {
+
+    // ML-KEM-768 Post-Quantum MAKA (NIST FIPS 203)
+    if (protocolId === 'ml_kem') {
+      if (stepIndex === 0) {
+        return {
+          title: 'Message M1: User ML-KEM-768 Public Key & Authentication Challenge',
+          sender: 'user',
+          receiver: 'cloud',
+          directionText: 'User (Ui) → Cloud Server (Sj)',
+          sizeBits: 10080,
+          parameters: [
+            { symbol: 'user_id', meaning: 'User identifier', formula: '64 bits' },
+            { symbol: 'PK_u', meaning: 'ML-KEM-768 encapsulation key (public key)', formula: '1,184 bytes = 9,472 bits (FIPS 203 Table 2)' },
+            { symbol: 'nonce_u', meaning: 'Fresh random nonce', formula: '256-bit CSPRNG token' },
+            { symbol: 'T1', meaning: 'Freshness timestamp', formula: '32-bit timestamp' },
+            { symbol: 'Auth_u', meaning: 'User authentication tag', formula: 'SHA3-256(user_id ∥ h_id ∥ R ∥ PK_u ∥ nonce_u ∥ T1)' },
+          ],
+          localComputation: [
+            'Generates ML-KEM-768 lattice keypair using SHAKE-256 key expansion.',
+            'Computes user authenticator tag using SHA3-256 over registration credential token R.',
+          ],
+          verificationStep: 'Cloud server forwards request to Registration Centre (RC) for authentication and KEM encapsulation.'
+        };
+      }
+      if (stepIndex === 1) {
+        return {
+          title: 'Message M2: Forwarded Authentication Request to Registration Centre',
+          sender: 'cloud',
+          receiver: 'cs',
+          directionText: 'Cloud Server (Sj) → Registration Centre (RC)',
+          sizeBits: 10080,
+          parameters: [
+            { symbol: 'M1_forwarded', meaning: 'Complete user authentication payload', formula: '{user_id, PK_u, nonce_u, T1, Auth_u}' },
+          ],
+          localComputation: [
+            'Relays user public key and challenge to Registration Centre.',
+          ],
+          verificationStep: 'RC verifies |T1 - T| ≤ ΔT, checks nonce freshness, and validates SHA3-256 authenticator.'
+        };
+      }
+      if (stepIndex === 2) {
+        return {
+          title: 'Message M3: ML-KEM-768 Ciphertext & Shared Secret Encapsulation',
+          sender: 'cs',
+          receiver: 'cloud',
+          directionText: 'Registration Centre (RC) → Cloud Server (Sj)',
+          sizeBits: 9248,
+          parameters: [
+            { symbol: 'ciphertext', meaning: 'ML-KEM-768 ciphertext', formula: '1,088 bytes = 8,704 bits (FIPS 203 Table 2)' },
+            { symbol: 'nonce_cs', meaning: 'Cloud server fresh nonce', formula: '256-bit CSPRNG token' },
+            { symbol: 'T2', meaning: 'Timestamp', formula: '32-bit timestamp' },
+            { symbol: 'Auth_cs', meaning: 'Cloud server authenticator', formula: 'SHA3-256(user_id ∥ PK_u ∥ nonce_u ∥ T1 ∥ CT ∥ nonce_cs ∥ T2)' },
+          ],
+          localComputation: [
+            'RC performs ML-KEM.Encaps(PK_u) generating 1088-byte ciphertext and 256-bit shared secret K.',
+            'Cloud server derives session key SK = SHAKE256(K ∥ Transcript, length=32).'
+          ],
+          verificationStep: 'Cloud server caches SK and prepares downstream forwarding to User.'
+        };
+      }
       return {
-        title: 'Message M2: Aggregated Request to Control Server',
+        title: 'Message M4: Ciphertext Forwarding & User Decapsulation',
         sender: 'cloud',
-        receiver: 'cs',
-        directionText: 'Cloud Server (Sj) → Control Server (CS)',
-        sizeBits: 1600,
+        receiver: 'user',
+        directionText: 'Cloud Server (Sj) → User (Ui)',
+        sizeBits: 9248,
         parameters: [
-          { symbol: 'M1', meaning: 'Forwarded user payload', formula: '{PIDi, B1, B2, V1, TS1}' },
-          { symbol: 'B3, V2', meaning: 'Cloud nonce & authenticator', formula: 'Masked rj and V2' },
+          { symbol: 'ciphertext', meaning: 'Forwarded ML-KEM ciphertext', formula: '1,088 bytes' },
+          { symbol: 'nonce_cs', meaning: 'Server freshness nonce', formula: '256 bits' },
+          { symbol: 'T2', meaning: 'Server timestamp', formula: '32 bits' },
+          { symbol: 'Auth_cs', meaning: 'Server authentication tag', formula: 'SHA3-256 validation tag' },
         ],
-        localComputation: ['Cloud server adds cloud authentication payload.'],
+        localComputation: [
+          'User verifies Auth_cs tag with SHA3-256.',
+          'User decapsulates ciphertext: K = ML-KEM.Decaps(SK_u, ciphertext).',
+          'User derives symmetric session key: SK = SHAKE256(K ∥ Transcript, length=32).',
+          'Both parties now hold identical post-quantum secure session key SK.'
+        ],
+        verificationStep: 'Post-quantum mutual key agreement confirmed. Quantum resistance against Shor’s algorithm guaranteed.'
       };
     }
+
+    // Default fallback
     return {
-      title: 'Message M3: Proposed Combined Response & Relay',
-      sender: 'cs',
-      receiver: 'user',
-      directionText: 'Control Server (CS) → Cloud (Sj) → User (Ui)',
-      sizeBits: 1824,
-      parameters: [
-        { symbol: 'V3, V4', meaning: 'Dual verification tokens for Cloud and User', formula: 'Consolidated into single response' },
-        { symbol: 'B6, B8', meaning: 'Relayed session parameters', formula: 'Single round-trip reduction' },
-      ],
-      localComputation: [
-        'CS produces consolidated payload delivering Cloud and User material together.',
-        'Cloud verifies V3, extracts its session material, and immediately relays user payload.',
-        'Eliminates separate M4 handshake, achieving 3 total message rounds.'
-      ],
-      verificationStep: 'Requires formal verification to prove equivalence under Dolev-Yao concurrent interception.'
+      title: `Step ${stepIndex + 1}`,
+      sender: 'user',
+      receiver: 'cloud',
+      directionText: 'Endpoint → Receiver',
+      sizeBits: 256,
+      parameters: [],
+      localComputation: [],
     };
   };
 
