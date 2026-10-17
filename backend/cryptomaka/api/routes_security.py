@@ -9,6 +9,8 @@ from sqlalchemy.orm import Session
 
 from cryptomaka.database import ProtocolRun, SecurityTestResult, get_db
 from cryptomaka.schemas.security import (
+    FormalModelDetailResponse,
+    FormalVerificationResponse,
     PlaygroundSamplePacketResponse,
     PlaygroundTamperRequest,
     PlaygroundTamperResponse,
@@ -127,4 +129,62 @@ def simulate_playground_tampering(request: PlaygroundTamperRequest):
             detail=f"Playground protocol must be one of: {list(allowed)}",
         )
     return simulate_tamper(request)
+
+
+@router.get("/formal-verification", response_model=FormalVerificationResponse)
+def get_formal_verification_summary():
+    """
+    Retrieve formal verification proof results evaluated by ProVerif across Ju-Park, ECC, and ML-KEM.
+    """
+    import sys
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[3]
+    if str(root) not in sys.path:
+        sys.path.insert(0, str(root))
+
+    from research.formal_verification.runner import FormalVerificationRunner
+
+    runner = FormalVerificationRunner()
+    results = runner.verify_all()
+    has_binary = runner.has_proverif()
+
+    return FormalVerificationResponse(
+        engine="ProVerif (Applied Pi-Calculus in Dolev-Yao Model)",
+        version="2.05+",
+        has_binary=has_binary,
+        results={k: v.to_dict() for k, v in results.items()},
+    )
+
+
+@router.get("/formal-verification/{protocol_id}", response_model=FormalModelDetailResponse)
+def get_formal_verification_model_detail(protocol_id: str):
+    """
+    Retrieve raw ProVerif (.pv) model source code and certified execution proof transcript.
+    """
+    import sys
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[3]
+    if str(root) not in sys.path:
+        sys.path.insert(0, str(root))
+
+    from research.formal_verification.runner import FormalVerificationRunner, MODELS
+
+    if protocol_id not in MODELS:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Protocol model '{protocol_id}' not found. Available: {list(MODELS.keys())}",
+        )
+
+    runner = FormalVerificationRunner()
+    model_file = MODELS[protocol_id]
+    source_code = runner.get_model_source(protocol_id)
+    transcript = runner.get_transcript(protocol_id)
+
+    return FormalModelDetailResponse(
+        protocol_id=protocol_id,
+        model_file=model_file,
+        source_code=source_code,
+        transcript=transcript,
+    )
+
 

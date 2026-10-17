@@ -73,3 +73,56 @@ class PlaygroundTamperResponse(BaseModel):
     tampered_fields: list[str]
     logs: list[PlaygroundLogEntry]
     duration_ms: float
+
+
+class FormalQuerySchema(BaseModel):
+    query_id: str
+    target: str
+    query_type: str
+    raw_query: str
+    proved: bool
+    status: str
+    description: str
+
+
+class SyntaxValidationSchema(BaseModel):
+    valid: bool
+    channels_found: list[str] = Field(default_factory=list)
+    types_found: list[str] = Field(default_factory=list)
+    events_found: list[str] = Field(default_factory=list)
+    queries_found: list[str] = Field(default_factory=list)
+    processes_found: list[str] = Field(default_factory=list)
+    errors: list[str] = Field(default_factory=list)
+
+
+class FormalVerificationSummarySchema(BaseModel):
+    protocol_id: str
+    protocol_name: str
+    framework: str
+    attacker_model: str
+    security_level: str
+    model_file: str
+    has_binary: bool
+    execution_source: str
+    all_proved: bool
+    theorems_count: int
+    theorems_proved: int
+    queries: list[FormalQuerySchema]
+    syntax_validation: SyntaxValidationSchema
+    features: list[str] = Field(default_factory=list)
+    verification_time: float
+
+
+class FormalVerificationResponse(BaseModel):
+    engine: str
+    version: str
+    has_binary: bool
+    results: dict[str, FormalVerificationSummarySchema]
+
+
+class FormalModelDetailResponse(BaseModel):
+    protocol_id: str
+    model_file: str
+    source_code: str
+    transcript: str
+

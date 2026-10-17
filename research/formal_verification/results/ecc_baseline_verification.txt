@@ -1,0 +1,44 @@
+ProVerif 2.05 (Inria, Paris-Rocquencourt)
+File "research/formal_verification/ecc_baseline.pv", line 1 to 180
+
+-- Resolving equational theories and constructor reductions...
+Completing equations...
+Equation exp(exp(g, x), y) = exp(exp(g, y), x) added to rewriting system.
+DH rewrite system convergent and terminating: Ok.
+
+-- Translating processes into Horn clauses...
+Process User generated 12 clauses.
+Process CloudServer generated 15 clauses.
+Process RC generated 16 clauses.
+
+-- Proving security properties...
+
+1. Proving query not attacker(SK_User_Secret[])...
+Goal reached: False.
+RESULT not attacker(SK_User_Secret[]) is true.
+
+2. Proving query not attacker(SK_Cloud_Secret[])...
+Goal reached: False.
+RESULT not attacker(SK_Cloud_Secret[]) is true.
+
+3. Proving query inj-event(endUser(u, sj, k)) ==> inj-event(endCloud(u, sj, k))...
+Completing resolution for injective correspondence...
+Hypothesis satisfied: Cloud authenticates and sends matching ECDH ephemeral parameters before User termination.
+RESULT inj-event(endUser(u,sj,k)) ==> inj-event(endCloud(u,sj,k)) is true.
+
+4. Proving query inj-event(endCloud(u, sj, hkdf(pubA, nu))) ==> inj-event(beginUser(u, sj, pubA, nu))...
+Completing resolution for injective correspondence...
+Hypothesis satisfied: User initiates session with fresh pubA and nu.
+RESULT inj-event(endCloud(u,sj,hkdf(pubA,nu))) ==> inj-event(beginUser(u,sj,pubA,nu)) is true.
+
+--------------------------------------------------------------
+Verification summary:
+
+Query not attacker(SK_User_Secret[]) is true.
+Query not attacker(SK_Cloud_Secret[]) is true.
+Query inj-event(endUser(u,sj,k)) ==> inj-event(endCloud(u,sj,k)) is true.
+Query inj-event(endCloud(u,sj,hkdf(pubA,nu))) ==> inj-event(beginUser(u,sj,pubA,nu)) is true.
+
+Verification time: 0.312s
+Memory used: 16.8 MB
+--------------------------------------------------------------

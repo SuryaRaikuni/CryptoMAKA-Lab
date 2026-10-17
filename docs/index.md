@@ -17,6 +17,7 @@ CryptoMAKA Lab is an experimental, reproducible research platform for evaluating
 ## Security & Verification
 - **[Threat Model](threat-model.md)** — Dolev-Yao attacker capabilities, session corruption models, and credential exposure scenarios.
 - **[Security Analysis](security-analysis.md)** — Matrix of 7 automated attack vectors (Replay, Stale Timestamp, Tampering, Impersonation, MitM, Nonce reuse, Session Key match) and verification results.
+- **[Formal Protocol Verification](formal-verification.md)** — Automated ProVerif 2.05+ models in applied pi-calculus, Dolev-Yao secrecy proofs, and injective mutual authentication correspondence.
 
 ## Benchmarks & Research
 - **[Benchmark Methodology](benchmark-methodology.md)** — High-resolution timing methodology (`perf_counter_ns`), statistical aggregation, and communication overhead breakdown.

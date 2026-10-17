@@ -8,7 +8,7 @@ This document details the security verification methodology of **CryptoMAKA Lab*
 
 > **ACADEMIC NOTICE:**
 > An empirical test result of **PASS** indicates that the software implementation resisted an automated simulated attack scenario under specific simulated inputs.
-> Empirical tests do **NOT** constitute mathematical proof of security. Formal proofs (e.g., BAN Logic, Random Oracle Model (RoR), ProVerif, or Scyther verification) are published separately in the source paper (Ju \& Park, 2023).
+> Empirical tests do **NOT** substitute for mathematical proof of security. To address this, **CryptoMAKA Lab includes a dedicated Formal Verification Suite** implemented using Inria ProVerif 2.05+ in `research/formal_verification/`. Detailed formal theorems, applied pi-calculus models, and Dolev-Yao proofs are documented in [docs/formal-verification.md](formal-verification.md).
 
 ---
 

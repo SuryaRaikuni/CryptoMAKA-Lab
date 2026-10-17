@@ -248,3 +248,39 @@ def test_playground_simulate_tamper_api(client):
     assert data["dropped_by"] == "ControlServer"
     assert len(data["logs"]) > 0
     assert "V1" in data["tampered_fields"]
+
+
+def test_formal_verification_summary_api(client):
+    """GET /api/v1/security/formal-verification should return all 3 protocol verification proofs."""
+    r = client.get("/api/v1/security/formal-verification")
+    assert r.status_code == 200
+    data = r.json()
+    assert "engine" in data
+    assert "results" in data
+    assert "ju_park" in data["results"]
+    assert "ecc" in data["results"]
+    assert "ml_kem" in data["results"]
+
+    ju_park = data["results"]["ju_park"]
+    assert ju_park["all_proved"] is True
+    assert ju_park["theorems_proved"] == 5
+    assert len(ju_park["queries"]) == 5
+
+
+def test_formal_verification_model_detail_api(client):
+    """GET /api/v1/security/formal-verification/{protocol_id} should return .pv source and transcript."""
+    for proto in ["ju_park", "ecc", "ml_kem"]:
+        r = client.get(f"/api/v1/security/formal-verification/{proto}")
+        assert r.status_code == 200
+        data = r.json()
+        assert data["protocol_id"] == proto
+        assert data["model_file"].endswith(".pv")
+        assert len(data["source_code"]) > 100
+        assert "RESULT" in data["transcript"]
+
+
+def test_formal_verification_invalid_protocol_api(client):
+    """GET /api/v1/security/formal-verification/{protocol_id} returns 404 for unknown protocol."""
+    r = client.get("/api/v1/security/formal-verification/non_existent_protocol")
+    assert r.status_code == 404
+
