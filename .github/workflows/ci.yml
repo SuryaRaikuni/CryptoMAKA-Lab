@@ -69,17 +69,12 @@ jobs:
       - name: Run Markdown Linter
         run: markdownlint "docs/**/*.md" --ignore node_modules
 
-      # Set up Pandoc for PDF generation
-      - name: Set up Pandoc
-        uses: actions/setup-pandoc@v2
-        with:
-          version: '3.1'
-
-      # Install LaTeX (texlive) for PDF generation
-      - name: Install LaTeX
+      # Install Pandoc and LaTeX (texlive) for PDF generation
+      - name: Install Pandoc and LaTeX
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
+            pandoc \
             texlive-latex-base \
             texlive-latex-recommended \
             texlive-fonts-recommended \
