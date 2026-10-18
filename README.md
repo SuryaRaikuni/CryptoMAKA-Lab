@@ -1,7 +1,7 @@
 # CryptoMAKA Lab
 [![CI](https://github.com/SuryaRaikuni/CNS/actions/workflows/ci.yml/badge.svg)](https://github.com/SuryaRaikuni/CNS/actions)
-[![Release](https://img.shields.io/github/v/release/SuryaRaikuni/CNS?include_prereleases&color=blue)](https://github.com/SuryaRaikuni/CNS/releases)
-[![Academic Report](https://img.shields.io/badge/Academic%20Report-PDF-red)](https://github.com/SuryaRaikuni/CNS/releases/download/v0.1.0/academic-report.pdf)
+[![Release](https://img.shields.io/badge/release-v0.1.0-blue)](https://github.com/SuryaRaikuni/CNS/releases)
+[![Academic Report](https://img.shields.io/badge/Academic%20Report-PDF-blue)](https://github.com/SuryaRaikuni/CNS/releases/download/v0.1.0/academic-report.pdf)
 [![Quick Start](https://img.shields.io/badge/Quick%20Start-Guide-green)](QUICKSTART.md)
 
 A web-based experimental platform for cloud-IoT mutual authentication and key-agreement research.
