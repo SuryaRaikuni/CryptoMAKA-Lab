@@ -1,0 +1,200 @@
+(* =========================================================================
+   CryptoMAKA Formal Verification Suite: Post-Quantum ML-KEM-768 (FIPS 203)
+   Model: Lattice-Based Key Encapsulation Mechanism in 3-Party MAKA
+   Verifier: ProVerif 2.05+ (Applied Pi-Calculus in Dolev-Yao Model)
+   ========================================================================= *)
+
+(* --- Channels --- *)
+free c: channel.                        (* Public untrusted Dolev-Yao channel *)
+free c_reg: channel [private].          (* Secure registration channel *)
+
+(* --- Basic Types --- *)
+type id.
+type nonce.
+type key.
+type pkey.
+type skey.
+type timestamp.
+
+(* --- Type Converters --- *)
+fun nonce_to_bitstring(nonce): bitstring [data, typeConverter].
+fun id_to_bitstring(id): bitstring [data, typeConverter].
+fun key_to_bitstring(key): bitstring [data, typeConverter].
+fun pkey_to_bitstring(pkey): bitstring [data, typeConverter].
+fun ts_to_bitstring(timestamp): bitstring [data, typeConverter].
+
+(* --- Lattice-Based Key Encapsulation Mechanism (KEM) Primitive --- *)
+fun pk(skey): pkey.
+fun kem_encaps_c(pkey, nonce): bitstring.   (* Ciphertext c_kem *)
+fun kem_encaps_k(pkey, nonce): key.         (* Shared secret K_kem *)
+reduc forall sk: skey, r: nonce;
+  kem_decaps(sk, kem_encaps_c(pk(sk), r)) = kem_encaps_k(pk(sk), r).
+
+(* --- Post-Quantum SHA-3 Primitives --- *)
+fun h3(bitstring): bitstring.
+fun shake256(bitstring, bitstring): bitstring.
+fun concat2(bitstring, bitstring): bitstring.
+fun concat3(bitstring, bitstring, bitstring): bitstring.
+fun concat4(bitstring, bitstring, bitstring, bitstring): bitstring.
+fun concat5(bitstring, bitstring, bitstring, bitstring, bitstring): bitstring.
+
+(* Keyed MAC for authentication using SHA3-256 *)
+fun mac3(bitstring, key): bitstring.
+
+(* Symmetric Encryption for token delivery *)
+fun senc(bitstring, key): bitstring.
+reduc forall m: bitstring, k: key; sdec(senc(m, k), k) = m.
+
+(* --- Protocol Identifiers --- *)
+const ID_RC: id.
+const ID_Cloud: id.
+const ID_User: id.
+
+(* --- Security Events --- *)
+event beginUser(id, id, bitstring, nonce).
+event endUser(id, id, bitstring).
+event beginCloud(id, id, pkey, nonce).
+event endCloud(id, id, bitstring).
+event endRC(id, id).
+
+(* --- Security Queries --- *)
+
+(* 1. Post-Quantum Secrecy of User Session Key *)
+free SK_User_Secret: bitstring [private].
+query attacker(SK_User_Secret).
+
+(* 2. Post-Quantum Secrecy of Cloud Session Key *)
+free SK_Cloud_Secret: bitstring [private].
+query attacker(SK_Cloud_Secret).
+
+(* 3. Injective Mutual Authentication between User and Cloud *)
+query u: id, sj: id, k: bitstring;
+  inj-event(endUser(u, sj, k)) ==> inj-event(endCloud(u, sj, k)).
+
+(* 4. Injective Mutual Authentication between Cloud and User *)
+query u: id, sj: id, c_kem: bitstring, n_u: nonce;
+  inj-event(endCloud(u, sj, c_kem)) ==> inj-event(beginUser(u, sj, c_kem, n_u)).
+
+
+(* =========================================================================
+   Process: User Node (Ui) - Initiator & KEM Encapsulator
+   ========================================================================= *)
+let processUser(u_id: id, k_u_rc: key, pk_s: pkey) =
+  (* Ephemeral randomness for encapsulation and fresh nonce *)
+  new r_kem: nonce;
+  new n_u: nonce;
+  new ts1: timestamp;
+
+  let nu_b = nonce_to_bitstring(n_u) in
+  let ts1_b = ts_to_bitstring(ts1) in
+  let idu_b = id_to_bitstring(u_id) in
+  let idsj_b = id_to_bitstring(ID_Cloud) in
+
+  (* Encapsulate to obtain ciphertext and shared secret *)
+  let c_kem = kem_encaps_c(pk_s, r_kem) in
+  let k_shared = kem_encaps_k(pk_s, r_kem) in
+  let k_shared_b = key_to_bitstring(k_shared) in
+
+  (* User authenticator binding ML-KEM ciphertext *)
+  let auth_u = mac3(concat4(idu_b, idsj_b, c_kem, nu_b), k_u_rc) in
+
+  event beginUser(u_id, ID_Cloud, c_kem, n_u);
+
+  (* M1: (ID_User, ID_Cloud, c_kem, n_u, auth_u, TS1) *)
+  out(c, (idu_b, idsj_b, c_kem, nu_b, auth_u, ts1_b));
+
+  (* M4: (n_s, auth_s, token_rc, TS4) *)
+  in(c, (ns_b: bitstring, auth_s: bitstring, token: bitstring, ts4_b: bitstring));
+
+  let ticket = sdec(token, k_u_rc) in
+  let expected_auth_s = mac3(concat4(idsj_b, idu_b, c_kem, ns_b), k_u_rc) in
+
+  if auth_s = expected_auth_s then
+  (
+    (* Compute final session key via SHAKE256 *)
+    let context = concat3(c_kem, nu_b, ns_b) in
+    let SK_U = shake256(k_shared_b, context) in
+
+    event endUser(u_id, ID_Cloud, SK_U);
+    out(c, senc(SK_User_Secret, k_shared_b))
+  ).
+
+
+(* =========================================================================
+   Process: Cloud Server (Sj) - KEM Decapsulator
+   ========================================================================= *)
+let processCloudServer(sj_id: id, k_s_rc: key, sk_s: skey) =
+  in(c, (m1_idu: bitstring, m1_idsj: bitstring, m1_c_kem: bitstring, m1_nu: bitstring, m1_auth_u: bitstring, m1_ts1: bitstring));
+
+  new n_s: nonce;
+  new ts2: timestamp;
+  let ns_b = nonce_to_bitstring(n_s) in
+  let ts2_b = ts_to_bitstring(ts2) in
+
+  (* Cloud authenticates and sends to RC *)
+  let auth_s = mac3(concat4(id_to_bitstring(sj_id), m1_idu, m1_c_kem, ns_b), k_s_rc) in
+  out(c, (m1_idu, m1_idsj, m1_c_kem, m1_nu, m1_auth_u, ns_b, auth_s, ts2_b));
+
+  (* Await authorization from RC *)
+  in(c, (rc_token_s: bitstring, rc_token_u: bitstring, rc_auth_s: bitstring));
+
+  let expected_rc_auth = mac3(concat3(rc_token_s, rc_token_u, ns_b), k_s_rc) in
+  if rc_auth_s = expected_rc_auth then
+  (
+    (* Decapsulate shared secret from received ciphertext *)
+    let k_shared = kem_decaps(sk_s, m1_c_kem) in
+    let k_shared_b = key_to_bitstring(k_shared) in
+
+    let context = concat3(m1_c_kem, m1_nu, ns_b) in
+    let SK_Cloud = shake256(k_shared_b, context) in
+
+    event endCloud(ID_User, sj_id, m1_c_kem);
+
+    (* Send M4 to User *)
+    new ts4: timestamp;
+    let auth_s_user = mac3(concat4(id_to_bitstring(sj_id), m1_idu, m1_c_kem, ns_b), k_s_rc) in
+    out(c, (ns_b, auth_s_user, rc_token_u, ts_to_bitstring(ts4)));
+    out(c, senc(SK_Cloud_Secret, k_shared_b))
+  ).
+
+
+(* =========================================================================
+   Process: Registration Centre (RC)
+   ========================================================================= *)
+let processRC(k_u_rc: key, k_s_rc: key) =
+  in(c, (idu_b: bitstring, idsj_b: bitstring, c_kem: bitstring, nu_b: bitstring, auth_u: bitstring,
+         ns_b: bitstring, auth_s: bitstring, ts2_b: bitstring));
+
+  let expected_auth_u = mac3(concat4(idu_b, idsj_b, c_kem, nu_b), k_u_rc) in
+  if auth_u = expected_auth_u then
+  (
+    let expected_auth_s = mac3(concat4(idsj_b, idu_b, c_kem, ns_b), k_s_rc) in
+    if auth_s = expected_auth_s then
+    (
+      event endRC(ID_User, ID_Cloud);
+      let ticket_u = mac3(concat4(idsj_b, idu_b, c_kem, ns_b), k_u_rc) in
+      let token_u = senc(ticket_u, k_u_rc) in
+      let token_s = senc(c_kem, k_s_rc) in
+      let rc_auth_s = mac3(concat3(token_s, token_u, ns_b), k_s_rc) in
+      out(c, (token_s, token_u, rc_auth_s))
+    )
+  ).
+
+
+(* =========================================================================
+   Main Process
+   ========================================================================= *)
+process
+  new k_u_rc: key;
+  new k_s_rc: key;
+  new sk_s: skey;
+  let pk_s = pk(sk_s) in
+
+  (* Public key of Cloud server is broadcasted on public channel *)
+  out(c, pkey_to_bitstring(pk_s));
+
+  (
+    (!processUser(ID_User, k_u_rc, pk_s)) |
+    (!processCloudServer(ID_Cloud, k_s_rc, sk_s)) |
+    (!processRC(k_u_rc, k_s_rc))
+  )

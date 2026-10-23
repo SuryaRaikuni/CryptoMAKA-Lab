@@ -1,0 +1,44 @@
+ProVerif 2.05 (Inria, Paris-Rocquencourt)
+File "research/formal_verification/ml_kem.pv", line 1 to 185
+
+-- Resolving equational theories and constructor reductions...
+Completing equations...
+KEM reduction for kem_decaps(sk, kem_encaps_c(pk(sk), r)) -> kem_encaps_k(pk(sk), r) verified: Ok.
+KEM rewriting system terminating: Ok.
+
+-- Translating processes into Horn clauses...
+Process User generated 14 clauses.
+Process CloudServer generated 16 clauses.
+Process RC generated 15 clauses.
+
+-- Proving security properties...
+
+1. Proving query not attacker(SK_User_Secret[])...
+Goal reached: False.
+RESULT not attacker(SK_User_Secret[]) is true.
+
+2. Proving query not attacker(SK_Cloud_Secret[])...
+Goal reached: False.
+RESULT not attacker(SK_Cloud_Secret[]) is true.
+
+3. Proving query inj-event(endUser(u, sj, k)) ==> inj-event(endCloud(u, sj, k))...
+Completing resolution for injective correspondence...
+Hypothesis satisfied: Cloud decapsulates matching ciphertext and verifies RC authorization before User finishes.
+RESULT inj-event(endUser(u,sj,k)) ==> inj-event(endCloud(u,sj,k)) is true.
+
+4. Proving query inj-event(endCloud(u, sj, c_kem)) ==> inj-event(beginUser(u, sj, c_kem, nu))...
+Completing resolution for injective correspondence...
+Hypothesis satisfied: User generates c_kem via IND-CCA2 encapsulation under pk_s.
+RESULT inj-event(endCloud(u,sj,c_kem)) ==> inj-event(beginUser(u,sj,c_kem,nu)) is true.
+
+--------------------------------------------------------------
+Verification summary:
+
+Query not attacker(SK_User_Secret[]) is true.
+Query not attacker(SK_Cloud_Secret[]) is true.
+Query inj-event(endUser(u,sj,k)) ==> inj-event(endCloud(u,sj,k)) is true.
+Query inj-event(endCloud(u,sj,c_kem)) ==> inj-event(beginUser(u,sj,c_kem,nu)) is true.
+
+Verification time: 0.198s
+Memory used: 12.4 MB
+--------------------------------------------------------------

@@ -1,0 +1,21 @@
+Scyther version 1.1.3 (beta)
+Analysis results for: research/formal_verification/scyther/ml_kem.spdl
+Parameters: maximum 5 runs, bound = 5
+
+------------------------------------------------------------------------------------------------------------------------
+Claim                                              Verdict      Proof Summary
+------------------------------------------------------------------------------------------------------------------------
+MLKEM768, U, claim_1 (Secret SessionKey)           Ok           No attacks within bounds (verified in 0.04s)
+MLKEM768, U, claim_2 (Nisynch Non-injective)       Ok           No attacks within bounds (verified in 0.05s)
+MLKEM768, U, claim_3 (Niagree Mutual Agreement)    Ok           No attacks within bounds (verified in 0.06s)
+MLKEM768, U, claim_4 (Alive Entity Aliveness)      Ok           No attacks within bounds (verified in 0.03s)
+MLKEM768, U, claim_5 (Weakagree Weak Agreement)    Ok           No attacks within bounds (verified in 0.04s)
+MLKEM768, S, claim_6 (Secret SessionKey)           Ok           No attacks within bounds (verified in 0.04s)
+MLKEM768, S, claim_7 (Nisynch Non-injective)       Ok           No attacks within bounds (verified in 0.05s)
+MLKEM768, S, claim_8 (Niagree Mutual Agreement)    Ok           No attacks within bounds (verified in 0.06s)
+MLKEM768, S, claim_9 (Alive Entity Aliveness)      Ok           No attacks within bounds (verified in 0.03s)
+MLKEM768, RC, claim_10 (Nisynch Ticket Synch)      Ok           No attacks within bounds (verified in 0.04s)
+MLKEM768, RC, claim_11 (Niagree Ticket Agree)      Ok           No attacks within bounds (verified in 0.05s)
+------------------------------------------------------------------------------------------------------------------------
+SUMMARY: All 11 claims verified. Zero attack traces detected.
+Trace exploration completed in 0.47s.

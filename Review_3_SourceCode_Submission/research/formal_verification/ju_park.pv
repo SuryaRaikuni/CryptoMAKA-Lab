@@ -1,0 +1,274 @@
+(* =========================================================================
+   CryptoMAKA Formal Verification Suite: Ju & Park Protocol (Sensors 2023)
+   Model: Three-Party Mutual Authentication and Key Agreement (MAKA)
+   Verifier: ProVerif 2.05+ (Applied Pi-Calculus in Dolev-Yao Model)
+   ========================================================================= *)
+
+(* --- Channels --- *)
+free c: channel.                        (* Public untrusted Dolev-Yao network channel *)
+free c_reg: channel [private].          (* Secure out-of-band channel for registration *)
+
+(* --- Basic Types --- *)
+type id.                                (* Protocol participant identifier *)
+type nonce.                             (* Fresh 256-bit random cryptographic nonce *)
+type key.                               (* Symmetric cryptographic key material *)
+type timestamp.                         (* Unix timestamp for freshness validation *)
+
+(* --- Type Converters --- *)
+fun nonce_to_bitstring(nonce): bitstring [data, typeConverter].
+fun id_to_bitstring(id): bitstring [data, typeConverter].
+fun key_to_bitstring(key): bitstring [data, typeConverter].
+fun ts_to_bitstring(timestamp): bitstring [data, typeConverter].
+
+(* --- Cryptographic Primitives --- *)
+(* Cryptographic One-Way Hash (SHA-256) modeled in the Random Oracle Model *)
+fun h(bitstring): bitstring.
+
+(* Multi-argument concatenation helpers *)
+fun concat2(bitstring, bitstring): bitstring.
+fun concat3(bitstring, bitstring, bitstring): bitstring.
+fun concat4(bitstring, bitstring, bitstring, bitstring): bitstring.
+fun concat5(bitstring, bitstring, bitstring, bitstring, bitstring): bitstring.
+
+(* Symmetric Masking / XOR Operation with Decryption Reductions *)
+fun mask(bitstring, bitstring): bitstring.
+reduc forall m: bitstring, k: bitstring; unmask(mask(m, k), k) = m.
+
+(* Cryptographic Pair Construction for Nonce Bundles *)
+fun pair(bitstring, bitstring): bitstring.
+reduc forall a: bitstring, b: bitstring; fst(pair(a, b)) = a.
+reduc forall a: bitstring, b: bitstring; snd(pair(a, b)) = b.
+
+(* --- Protocol Identifiers --- *)
+const ID_CS: id.                        (* Identity of Control Server *)
+const ID_Cloud: id.                     (* Identity of Cloud Server Sj *)
+const ID_User: id.                      (* Identity of User Ui *)
+
+(* --- Security Events for Authentication Correspondence --- *)
+event beginUser(id, id, id, bitstring). (* User begins authentication with (Ui, CS, Sj, session_param) *)
+event endUser(id, id, id, bitstring).   (* User terminates and establishes key SK *)
+event beginCloud(id, id, id, bitstring).(* Cloud server forwards M2 and generates rj *)
+event endCloud(id, id, id, bitstring).  (* Cloud server finishes M3, computes SK, sends M4 *)
+event beginCS(id, id, id, bitstring).   (* Control server processes M2, generates rk *)
+event endCS(id, id, id, bitstring).     (* Control server verifies Ui & Sj, generates M3 *)
+
+(* --- Queries for Secrecy and Authentication --- *)
+
+(* 1. Secrecy of the agreed Session Key established by User Ui *)
+free SK_User_Secret: bitstring [private].
+query attacker(SK_User_Secret).
+
+(* 2. Secrecy of the agreed Session Key established by Cloud Server Sj *)
+free SK_Cloud_Secret: bitstring [private].
+query attacker(SK_Cloud_Secret).
+
+(* 3. Injective Mutual Authentication between User Ui and Cloud Server Sj *)
+query u: id, cs: id, sj: id, k: bitstring;
+  inj-event(endUser(u, cs, sj, k)) ==> inj-event(endCloud(u, cs, sj, k)).
+
+(* 4. Injective Mutual Authentication between Cloud Server Sj and User Ui *)
+query u: id, cs: id, sj: id, k: bitstring;
+  inj-event(endCloud(u, cs, sj, k)) ==> inj-event(beginUser(u, cs, sj, k)).
+
+(* 5. Injective Authentication of User Ui to Control Server CS *)
+query u: id, cs: id, sj: id, k: bitstring;
+  inj-event(endCS(u, cs, sj, k)) ==> inj-event(beginUser(u, cs, sj, k)).
+
+
+(* =========================================================================
+   Process: User Node (Ui)
+   ========================================================================= *)
+let processUser(u_id: id, pidi: bitstring, sidi: bitstring, ki: bitstring) =
+  (* Step 1: User generates ephemeral nonce ri and timestamp TS1 *)
+  new ri: nonce;
+  new ts1: timestamp;
+  let ri_b = nonce_to_bitstring(ri) in
+  let ts1_b = ts_to_bitstring(ts1) in
+  let idcs_b = id_to_bitstring(ID_CS) in
+  let idsj_b = id_to_bitstring(ID_Cloud) in
+
+  (* B1 = ri XOR h(SIDi || ID_CS || ki) *)
+  let mask_b1 = h(concat3(sidi, idcs_b, ki)) in
+  let B1 = mask(ri_b, mask_b1) in
+
+  (* B2 = h(ID_Cloud) XOR h(ID_CS || SIDi || ri) *)
+  let mask_b2 = h(concat3(idcs_b, sidi, ri_b)) in
+  let B2 = mask(h(idsj_b), mask_b2) in
+
+  (* V1 = h(ID_CS || TS1 || SIDi || ki || ri) *)
+  let V1 = h(concat5(idcs_b, ts1_b, sidi, ki, ri_b)) in
+
+  (* Trigger beginUser event with session binding *)
+  event beginUser(u_id, ID_CS, ID_Cloud, ri_b);
+
+  (* Transmit message M1 = (PIDi, B1, B2, V1, TS1) onto public channel *)
+  out(c, (pidi, B1, B2, V1, ts1_b));
+
+  (* Step 4: Await message M4 = (B8, B9, V4, TS3, TS4) from Cloud Server *)
+  in(c, (m4_B8: bitstring, m4_B9: bitstring, m4_V4: bitstring, m4_TS3: bitstring, m4_TS4: bitstring));
+
+  (* Unmask (rj, rk) from B8 using h(SIDi || ID_CS || ri) *)
+  let pair_rj_rk = unmask(m4_B8, h(concat3(sidi, idcs_b, ri_b))) in
+  let rj_b = fst(pair_rj_rk) in
+  let rk_b = snd(pair_rj_rk) in
+
+  (* Unmask sidj from B9 using h(SIDi || rk) *)
+  let sidj = unmask(m4_B9, h(concat2(sidi, rk_b))) in
+
+  (* Compute C1 = h((SIDi XOR SIDj) || ID_CS) *)
+  let C1 = h(concat2(mask(sidi, sidj), idcs_b)) in
+
+  (* Verify V4 = h(SIDi || rj || rk || C1 || TS3) *)
+  let expected_V4 = h(concat5(sidi, rj_b, rk_b, C1, m4_TS3)) in
+  if m4_V4 = expected_V4 then
+  (
+    (* Compute final session key SK = h(C1 || ri || rj || rk) *)
+    let SK_U = h(concat4(C1, ri_b, rj_b, rk_b)) in
+    event endUser(u_id, ID_CS, ID_Cloud, SK_U);
+    out(c, mask(SK_User_Secret, SK_U))
+  ).
+
+
+(* =========================================================================
+   Process: Cloud Server (Sj)
+   ========================================================================= *)
+let processCloudServer(sj_id: id, kj: bitstring, sidj: bitstring) =
+  (* Step 1: Intercept or receive M1 from User *)
+  in(c, (m1_pidi: bitstring, m1_B1: bitstring, m1_B2: bitstring, m1_V1: bitstring, m1_TS1: bitstring));
+
+  (* Generate fresh nonce rj and timestamp TS2 *)
+  new rj: nonce;
+  new ts2: timestamp;
+  let rj_b = nonce_to_bitstring(rj) in
+  let ts2_b = ts_to_bitstring(ts2) in
+  let idsj_b = id_to_bitstring(sj_id) in
+
+  (* B3 = rj XOR h(kj || ID_Cloud) *)
+  let B3 = mask(rj_b, h(concat2(kj, idsj_b))) in
+  (* V2 = h(kj || TS2 || ID_Cloud || rj) *)
+  let V2 = h(concat4(kj, ts2_b, idsj_b, rj_b)) in
+
+  event beginCloud(ID_User, ID_CS, sj_id, rj_b);
+
+  (* Transmit M2 = (M1, B3, V2, TS2, ID_Cloud) to Control Server *)
+  out(c, (m1_pidi, m1_B1, m1_B2, m1_V1, m1_TS1, B3, V2, ts2_b, idsj_b));
+
+  (* Step 3: Receive M3 = (B6, B7, B8, B9, V3, V4, TS3) from Control Server *)
+  in(c, (m3_B6: bitstring, m3_B7: bitstring, m3_B8: bitstring, m3_B9: bitstring, m3_V3: bitstring, m3_V4: bitstring, m3_TS3: bitstring));
+
+  (* Unmask rk and ri from B6 using h(rj || kj) *)
+  let pair_rk_ri = unmask(m3_B6, h(concat2(rj_b, kj))) in
+  let rk_b = fst(pair_rk_ri) in
+  let ri_b = snd(pair_rk_ri) in
+
+  (* Unmask sidi from B7 using h(sidj || rk) *)
+  let sidi = unmask(m3_B7, h(concat2(sidj, rk_b))) in
+
+  (* Compute C1 = h((SIDi XOR SIDj) || ID_CS) *)
+  let idcs_b = id_to_bitstring(ID_CS) in
+  let C1 = h(concat2(mask(sidi, sidj), idcs_b)) in
+
+  (* Verify V3 = h(kj || ri || rk || C1 || TS3) *)
+  let expected_V3 = h(concat5(kj, ri_b, rk_b, C1, m3_TS3)) in
+  if m3_V3 = expected_V3 then
+  (
+    (* Compute final session key SK = h(C1 || ri || rj || rk) *)
+    let SK_Cloud = h(concat4(C1, ri_b, rj_b, rk_b)) in
+    event endCloud(ID_User, ID_CS, sj_id, SK_Cloud);
+
+    (* Transmit M4 = (B8, B9, V4, TS3, TS4) to User Ui *)
+    new ts4: timestamp;
+    let ts4_b = ts_to_bitstring(ts4) in
+    out(c, (m3_B8, m3_B9, m3_V4, m3_TS3, ts4_b));
+    out(c, mask(SK_Cloud_Secret, SK_Cloud))
+  ).
+
+
+(* =========================================================================
+   Process: Control Server (CS)
+   ========================================================================= *)
+let processControlServer(u_id: id, pidi: bitstring, sidi: bitstring, ki: bitstring,
+                         sj_id: id, kj: bitstring, sidj: bitstring) =
+  (* Receive M2 = (PIDi, B1, B2, V1, TS1, B3, V2, TS2, ID_Cloud) *)
+  in(c, (=pidi, m2_B1: bitstring, m2_B2: bitstring, m2_V1: bitstring, m2_TS1: bitstring,
+         m2_B3: bitstring, m2_V2: bitstring, m2_TS2: bitstring, =id_to_bitstring(sj_id)));
+
+  let idcs_b = id_to_bitstring(ID_CS) in
+  let idsj_b = id_to_bitstring(sj_id) in
+
+  (* Verify Cloud authenticator V2 *)
+  let rj_b = unmask(m2_B3, h(concat2(kj, idsj_b))) in
+  let expected_V2 = h(concat4(kj, m2_TS2, idsj_b, rj_b)) in
+  if m2_V2 = expected_V2 then
+  (
+    (* Verify User authenticator V1 *)
+    let ri_b = unmask(m2_B1, h(concat3(sidi, idcs_b, ki))) in
+    let expected_V1 = h(concat5(idcs_b, m2_TS1, sidi, ki, ri_b)) in
+    if m2_V1 = expected_V1 then
+    (
+      (* Verify target cloud identity binding in B2 *)
+      let target_h_cloud = unmask(m2_B2, h(concat3(idcs_b, sidi, ri_b))) in
+      if target_h_cloud = h(idsj_b) then
+      (
+        (* Fresh Control Server nonce rk and timestamp TS3 *)
+        new rk: nonce;
+        new ts3: timestamp;
+        let rk_b = nonce_to_bitstring(rk) in
+        let ts3_b = ts_to_bitstring(ts3) in
+
+        (* Compute common C1 *)
+        let C1 = h(concat2(mask(sidi, sidj), idcs_b)) in
+
+        (* B6 = (rk, ri) XOR h(rj || kj) *)
+        let B6 = mask(pair(rk_b, ri_b), h(concat2(rj_b, kj))) in
+
+        (* B7 = sidi XOR h(sidj || rk) *)
+        let B7 = mask(sidi, h(concat2(sidj, rk_b))) in
+
+        (* B8 = (rj, rk) XOR h(sidi || ID_CS || ri) *)
+        let B8 = mask(pair(rj_b, rk_b), h(concat3(sidi, idcs_b, ri_b))) in
+
+        (* B9 = sidj XOR h(sidi || rk) *)
+        let B9 = mask(sidj, h(concat2(sidi, rk_b))) in
+
+        (* Authenticators V3 and V4 *)
+        let V3 = h(concat5(kj, ri_b, rk_b, C1, ts3_b)) in
+        let V4 = h(concat5(sidi, rj_b, rk_b, C1, ts3_b)) in
+
+        let SK_CS = h(concat4(C1, ri_b, rj_b, rk_b)) in
+        event endCS(u_id, ID_CS, sj_id, ri_b);
+
+        (* Send M3 to Cloud Server *)
+        out(c, (B6, B7, B8, B9, V3, V4, ts3_b))
+      )
+    )
+  ).
+
+
+(* =========================================================================
+   Main System Process
+   ========================================================================= *)
+process
+  (* Generate master secrets and shared keys *)
+  new x_cs: key;
+  new n_i: nonce;
+  new n_j: nonce;
+
+  let xcs_b = key_to_bitstring(x_cs) in
+  let ni_b = nonce_to_bitstring(n_i) in
+  let nj_b = nonce_to_bitstring(n_j) in
+
+  (* Shared pseudo-identity and keys derived during secure registration *)
+  let sidi = h(mask(h(id_to_bitstring(ID_User)), xcs_b)) in
+  let ki = h(concat3(sidi, xcs_b, ni_b)) in
+  let pidi = h(concat2(sidi, ni_b)) in
+
+  let kj = h(concat3(id_to_bitstring(ID_Cloud), nj_b, xcs_b)) in
+  let sidj = h(concat2(id_to_bitstring(ID_Cloud), nj_b)) in
+
+  (* Spawn concurrent replicated processes in the Dolev-Yao network *)
+  (
+    (!processUser(ID_User, pidi, sidi, ki)) |
+    (!processCloudServer(ID_Cloud, kj, sidj)) |
+    (!processControlServer(ID_User, pidi, sidi, ki, ID_Cloud, kj, sidj))
+  )

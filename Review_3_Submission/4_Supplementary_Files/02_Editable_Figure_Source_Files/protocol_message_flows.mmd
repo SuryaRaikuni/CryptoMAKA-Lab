@@ -1,0 +1,32 @@
+sequenceDiagram
+    autonumber
+    title Protocol Handshake Sequence Comparison: Reference vs Proposed vs Post-Quantum
+
+    participant U as User / IoT Device (U_i)
+    participant CS as Cloud Server (CS_j)
+    participant AS as Control / Auth Server (AS_k)
+
+    rect rgb(240, 248, 255)
+    note over U,AS: 1. Ju-Park 2023 Lightweight Reference Handshake (4-Pass)
+    U->>CS: M1 = {PID_i, C_U, T1}
+    CS->>AS: M2 = {PID_i, SID_j, C_CS, T2}
+    AS->>CS: M3 = {C_AS1, C_AS2, T3}
+    CS->>U: M4 = {C_CS_U, T4}
+    note over U,AS: Mutual Authentication Established, Session Key SK Derived
+    end
+
+    rect rgb(240, 255, 240)
+    note over U,AS: 2. Proposed Reduced Round-Trip Handshake (3-Pass)
+    U->>CS: M1 = {PID_i, Q_U, Auth_U, T1}
+    CS->>AS: M2 = {PID_i, Q_CS, Auth_CS, T2}
+    AS-->>CS: M3_CS = {Ticket_CS, Proof_AS, T3}
+    AS-->>U: M3_U = {Ticket_U, Proof_AS, T3} (Aggregated Direct Multicast)
+    note over U,AS: Reduced 25% Handshake Airtime Latency
+    end
+
+    rect rgb(255, 245, 238)
+    note over U,AS: 3. Post-Quantum Lattice Handshake (FIPS 203 ML-KEM-768)
+    U->>CS: M1 = {PID_i, pk_U, T1} (Lattice Public Key: 1184 B)
+    CS->>U: M2 = {c_CS, Auth_tag, T2} (Ciphertext: 1088 B)
+    note over U,AS: Decapsulate shared secret ss = ML-KEM.Decaps(c, sk) -> SK
+    end

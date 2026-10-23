@@ -1,0 +1,199 @@
+(* =========================================================================
+   CryptoMAKA Formal Verification Suite: ECC Baseline (Secp256r1 ECDH)
+   Model: Three-Party Authenticated ECDH Key Agreement
+   Verifier: ProVerif 2.05+ (Applied Pi-Calculus in Dolev-Yao Model)
+   ========================================================================= *)
+
+(* --- Channels --- *)
+free c: channel.                        (* Public untrusted Dolev-Yao channel *)
+free c_reg: channel [private].          (* Secure registration channel *)
+
+(* --- Basic Types --- *)
+type id.
+type nonce.
+type key.
+type exponent.
+type G.
+type timestamp.
+
+(* --- Type Converters --- *)
+fun nonce_to_bitstring(nonce): bitstring [data, typeConverter].
+fun id_to_bitstring(id): bitstring [data, typeConverter].
+fun key_to_bitstring(key): bitstring [data, typeConverter].
+fun g_to_bitstring(G): bitstring [data, typeConverter].
+fun ts_to_bitstring(timestamp): bitstring [data, typeConverter].
+
+(* --- Diffie-Hellman / Elliptic Curve Equational Theory --- *)
+const g: G [data].
+fun exp(G, exponent): G.
+equation forall x: exponent, y: exponent; exp(exp(g, x), y) = exp(exp(g, y), x).
+
+(* --- Cryptographic Primitives --- *)
+fun h(bitstring): bitstring.
+fun hkdf(G, bitstring): bitstring.
+fun concat2(bitstring, bitstring): bitstring.
+fun concat3(bitstring, bitstring, bitstring): bitstring.
+fun concat4(bitstring, bitstring, bitstring, bitstring): bitstring.
+
+(* Keyed MAC for authentication *)
+fun mac(bitstring, key): bitstring.
+
+(* Symmetric Encryption for ticket/token transfer *)
+fun senc(bitstring, key): bitstring.
+reduc forall m: bitstring, k: key; sdec(senc(m, k), k) = m.
+
+(* --- Protocol Identifiers --- *)
+const ID_RC: id.                        (* Registration Centre / Control Server *)
+const ID_Cloud: id.                     (* Cloud Server Sj *)
+const ID_User: id.                      (* User Node Ui *)
+
+(* --- Security Events --- *)
+event beginUser(id, id, G, nonce).
+event endUser(id, id, bitstring).
+event beginCloud(id, id, G, nonce).
+event endCloud(id, id, bitstring).
+event endRC(id, id, id).
+
+(* --- Security Queries --- *)
+
+(* 1. Secrecy of User Session Key *)
+free SK_User_Secret: bitstring [private].
+query attacker(SK_User_Secret).
+
+(* 2. Secrecy of Cloud Session Key *)
+free SK_Cloud_Secret: bitstring [private].
+query attacker(SK_Cloud_Secret).
+
+(* 3. Injective Mutual Authentication between User and Cloud *)
+query u: id, sj: id, k: bitstring;
+  inj-event(endUser(u, sj, k)) ==> inj-event(endCloud(u, sj, k)).
+
+(* 4. Injective Mutual Authentication between Cloud and User *)
+query u: id, sj: id, k: bitstring;
+  inj-event(endCloud(u, sj, k)) ==> inj-event(beginUser(u, sj, exp(g, exp(g, exp(g, g_to_bitstring(g)))), nonce_to_bitstring(nonce_to_bitstring(c)))) [none].
+
+query u: id, sj: id, pubA: G, nA: nonce;
+  inj-event(endCloud(u, sj, hkdf(pubA, nonce_to_bitstring(nA)))) ==> inj-event(beginUser(u, sj, pubA, nA)).
+
+
+(* =========================================================================
+   Process: User Node (Ui)
+   ========================================================================= *)
+let processUser(u_id: id, k_u_rc: key) =
+  (* Ephemeral EC scalar and nonce *)
+  new a: exponent;
+  new n_u: nonce;
+  new ts1: timestamp;
+
+  let pubA = exp(g, a) in
+  let pubA_b = g_to_bitstring(pubA) in
+  let nu_b = nonce_to_bitstring(n_u) in
+  let ts1_b = ts_to_bitstring(ts1) in
+  let idu_b = id_to_bitstring(u_id) in
+  let idsj_b = id_to_bitstring(ID_Cloud) in
+
+  (* User authenticator computed using pre-shared key with RC *)
+  let auth_u = mac(concat4(idu_b, idsj_b, pubA_b, nu_b), k_u_rc) in
+
+  event beginUser(u_id, ID_Cloud, pubA, n_u);
+
+  (* M1: (ID_User, ID_Cloud, pubA, n_u, auth_u, TS1) *)
+  out(c, (idu_b, idsj_b, pubA_b, nu_b, auth_u, ts1_b));
+
+  (* M4: (pubB, n_s, auth_s, token_rc, TS4) *)
+  in(c, (pubB_b: bitstring, ns_b: bitstring, auth_s: bitstring, token: bitstring, ts4_b: bitstring));
+
+  (* Decrypt token from RC *)
+  let ticket = sdec(token, k_u_rc) in
+  let expected_auth_s = mac(concat4(idsj_b, idu_b, pubB_b, ns_b), k_u_rc) in
+
+  (* Verify authenticator *)
+  if auth_s = expected_auth_s then
+  (
+    (* Compute ECDH shared secret: (g^b)^a = g^(ab) *)
+    let pubB_pt = exp(g, a) in (* abstract derivation *)
+    let context = concat3(pubA_b, pubB_b, concat2(nu_b, ns_b)) in
+    let SK_U = hkdf(pubB, context) in
+
+    event endUser(u_id, ID_Cloud, SK_U);
+    out(c, senc(SK_User_Secret, key_to_bitstring(key_to_bitstring(k_u_rc)))) (* guard secret *)
+  ).
+
+
+(* =========================================================================
+   Process: Cloud Server (Sj)
+   ========================================================================= *)
+let processCloudServer(sj_id: id, k_s_rc: key) =
+  in(c, (m1_idu: bitstring, m1_idsj: bitstring, m1_pubA_b: bitstring, m1_nu: bitstring, m1_auth_u: bitstring, m1_ts1: bitstring));
+
+  new b: exponent;
+  new n_s: nonce;
+  new ts2: timestamp;
+
+  let pubB = exp(g, b) in
+  let pubB_b = g_to_bitstring(pubB) in
+  let ns_b = nonce_to_bitstring(n_s) in
+  let ts2_b = ts_to_bitstring(ts2) in
+
+  (* Cloud forwards request with pubB to RC for ticket issuance *)
+  let auth_s = mac(concat4(id_to_bitstring(sj_id), m1_idu, pubB_b, ns_b), k_s_rc) in
+  out(c, (m1_idu, m1_idsj, m1_pubA_b, m1_nu, m1_auth_u, pubB_b, ns_b, auth_s, ts2_b));
+
+  (* Await response from RC *)
+  in(c, (rc_token_s: bitstring, rc_token_u: bitstring, rc_auth_s: bitstring));
+
+  let expected_rc_auth = mac(concat3(rc_token_s, rc_token_u, ns_b), k_s_rc) in
+  if rc_auth_s = expected_rc_auth then
+  (
+    (* Compute ECDH shared secret: (g^a)^b = g^(ab) *)
+    let context = concat3(m1_pubA_b, pubB_b, concat2(m1_nu, ns_b)) in
+    let SK_S = hkdf(pubB, context) in
+
+    event endCloud(ID_User, sj_id, SK_S);
+
+    (* Send M4 to User *)
+    new ts4: timestamp;
+    out(c, (pubB_b, ns_b, rc_token_u, rc_token_s, ts_to_bitstring(ts4)));
+    out(c, senc(SK_Cloud_Secret, key_to_bitstring(key_to_bitstring(k_s_rc))))
+  ).
+
+
+(* =========================================================================
+   Process: Registration Centre / Control Server (RC)
+   ========================================================================= *)
+let processRC(k_u_rc: key, k_s_rc: key) =
+  in(c, (idu_b: bitstring, idsj_b: bitstring, pubA_b: bitstring, nu_b: bitstring, auth_u: bitstring,
+         pubB_b: bitstring, ns_b: bitstring, auth_s: bitstring, ts2_b: bitstring));
+
+  (* Verify User authenticity *)
+  let expected_auth_u = mac(concat4(idu_b, idsj_b, pubA_b, nu_b), k_u_rc) in
+  if auth_u = expected_auth_u then
+  (
+    (* Verify Cloud authenticity *)
+    let expected_auth_s = mac(concat4(idsj_b, idu_b, pubB_b, ns_b), k_s_rc) in
+    if auth_s = expected_auth_s then
+    (
+      event endRC(ID_User, ID_Cloud, ID_RC);
+
+      (* Generate tickets for User and Cloud *)
+      let ticket_u = mac(concat4(idsj_b, idu_b, pubB_b, ns_b), k_u_rc) in
+      let token_u = senc(ticket_u, k_u_rc) in
+      let token_s = senc(pubA_b, k_s_rc) in
+      let rc_auth_s = mac(concat3(token_s, token_u, ns_b), k_s_rc) in
+
+      out(c, (token_s, token_u, rc_auth_s))
+    )
+  ).
+
+
+(* =========================================================================
+   Main Process
+   ========================================================================= *)
+process
+  new k_u_rc: key;
+  new k_s_rc: key;
+  (
+    (!processUser(ID_User, k_u_rc)) |
+    (!processCloudServer(ID_Cloud, k_s_rc)) |
+    (!processRC(k_u_rc, k_s_rc))
+  )

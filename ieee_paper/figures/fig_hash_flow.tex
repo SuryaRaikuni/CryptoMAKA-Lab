@@ -1,0 +1,110 @@
+% =============================================================================
+% fig_hash_flow.tex  —  TikZ sequence diagram for Hash+XOR (Ju-Park) protocol
+% Include in main.tex with:  \input{figures/fig_hash_flow}
+% =============================================================================
+\begin{figure*}[!t]
+\centering
+\resizebox{0.92\textwidth}{!}{%
+\begin{tikzpicture}[
+  >=stealth,
+  entity/.style={rectangle, draw, fill=blue!10, minimum width=2.2cm,
+                 minimum height=0.7cm, font=\small\bfseries},
+  msg/.style={->, thick},
+  label/.style={font=\footnotesize, midway, above, sloped},
+  note/.style={font=\scriptsize, text=gray}
+]
+
+% ---- Entities ----
+\node[entity] (U)  at (0,0)    {User ($\mathcal{U}$)};
+\node[entity] (CS) at (7,0)    {Cloud Server ($\mathcal{CS}$)};
+
+% ---- Lifelines ----
+\draw[dashed, gray!60] (U.south)  -- ++(0,-13);
+\draw[dashed, gray!60] (CS.south) -- ++(0,-13);
+
+% -------- REGISTRATION PHASE ---------
+\node[font=\small\bfseries, fill=green!10, rounded corners, draw=green!60,
+      minimum width=4cm] at (3.5,-0.8) {Registration Phase};
+
+% Reg step 1: U -> CS
+\draw[msg] (0,-1.5) -- (7,-1.5)
+  node[label] {$\ID_U,\, \PW_U$};
+\node[note] at (0,-1.7) {(secure channel)};
+
+% CS computes V
+\node[font=\scriptsize, align=left, anchor=west] at (7.2,-2.0)
+  {Compute $V = h(\ID_U \| \PW_U \| K_{cs})$};
+\node[font=\scriptsize, align=left, anchor=west] at (7.2,-2.4)
+  {Store $(\ID_U, V)$};
+
+% Reg step 2: CS -> U
+\draw[msg] (7,-2.9) -- (0,-2.9)
+  node[label] {$\text{Params}$};
+
+% -------- LOGIN PHASE ---------
+\node[font=\small\bfseries, fill=orange!10, rounded corners, draw=orange!60,
+      minimum width=4cm] at (3.5,-3.5) {Login Phase};
+
+% U computes M1
+\node[font=\scriptsize, align=right, anchor=east] at (-0.2,-4.1)
+  {Pick $r_i \xleftarrow{\$} \{0,1\}^{256}$};
+\node[font=\scriptsize, align=right, anchor=east] at (-0.2,-4.5)
+  {$B_1 = r_i \oplus h(\ID_U \| \PW_U)$};
+\node[font=\scriptsize, align=right, anchor=east] at (-0.2,-4.9)
+  {$B_2 = \ID_{cs} \oplus h(\PW_U \| r_i)$};
+\node[font=\scriptsize, align=right, anchor=east] at (-0.2,-5.3)
+  {$V_1 = h(\ID_U \| r_i \| \PW_U \| TS_1)$};
+
+% M1: U -> CS
+\draw[msg] (0,-5.8) -- (7,-5.8)
+  node[label] {$M_1 = (\PID_i, B_1, B_2, V_1, TS_1)$\quad\small[1056 bits]};
+
+% -------- VERIFICATION & KEY AGREEMENT PHASE ---------
+\node[font=\small\bfseries, fill=purple!10, rounded corners, draw=purple!60,
+      minimum width=4cm] at (3.5,-6.5) {Verification \& Key Agreement};
+
+% CS verifies
+\node[font=\scriptsize, align=left, anchor=west] at (7.2,-7.1)
+  {Recover $r_i$ from $B_1$, verify $V_1$};
+\node[font=\scriptsize, align=left, anchor=west] at (7.2,-7.5)
+  {Pick $r_j \xleftarrow{\$} \{0,1\}^{256}$};
+\node[font=\scriptsize, align=left, anchor=west] at (7.2,-7.9)
+  {$B_3 = r_j \oplus h(r_i \| \ID_{cs})$};
+\node[font=\scriptsize, align=left, anchor=west] at (7.2,-8.3)
+  {$V_2 = h(\ID_{cs} \| r_j \| TS_2)$};
+\node[font=\scriptsize, align=left, anchor=west] at (7.2,-8.7)
+  {$\SK = h(r_i \| r_j \| \ID_U \| \ID_{cs})$};
+
+% M2: CS -> U
+\draw[msg] (7,-9.2) -- (0,-9.2)
+  node[label] {$M_2 = (B_3, V_2, TS_2)$\quad\small[544 bits]};
+
+% U derives SK
+\node[font=\scriptsize, align=right, anchor=east] at (-0.2,-9.8)
+  {Recover $r_j$ from $B_3$, verify $V_2$};
+\node[font=\scriptsize, align=right, anchor=east] at (-0.2,-10.2)
+  {$\SK = h(r_i \| r_j \| \ID_U \| \ID_{cs})$};
+
+% Both hold SK
+\node[font=\scriptsize\bfseries, fill=yellow!20, rounded corners, draw=yellow!60]
+  at (0,-11.0) {Holds $\SK$};
+\node[font=\scriptsize\bfseries, fill=yellow!20, rounded corners, draw=yellow!60]
+  at (7,-11.0) {Holds $\SK$};
+\draw[<->, double, thick, green!60!black] (0.5,-11.0) -- (6.5,-11.0)
+  node[midway, above, font=\scriptsize\bfseries] {Mutual Auth.\ \checkmark};
+
+% Communication overhead note
+\node[note, align=center] at (3.5,-12.2)
+  {Total (U--CS skeleton): $\approx 4{,}224$ bits (256-bit nonce variant)\\
+   Note: Base paper \cite{JuPark2023} reports 3{,}776 bits for
+   full 3-party protocol with smaller nonces.};
+
+\end{tikzpicture}%
+}
+\caption{Message-flow diagram for the Hash+XOR mutual authentication scheme
+(adapted from~\cite{JuPark2023}). This implementation covers the User--Cloud
+leg only; the Control-Server leg and key-confirmation step are omitted from
+the skeleton (see Section~\ref{sec:limitations}).
+Total communication: 4,224 bits using 256-bit nonces throughout.}
+\label{fig:hash_flow}
+\end{figure*}

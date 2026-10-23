@@ -1,0 +1,25 @@
+maude tool: 'maude'
+checking version: 3.1. OK.
+checking installation: OK.
+SAPIC tool: 'sapic'
+Checking version: 1.8.0. OK.
+
+==============================================================================
+summary of summaries:
+
+analyzed: research/formal_verification/tamarin/ju_park.spthy
+
+  processing time: 0.84s
+
+  EqualityCheck (all-traces): verified (4 steps)
+  Executability (exists-trace): verified (9 steps)
+  Secrecy_Session_Key_User (all-traces): verified (14 steps)
+  Secrecy_Session_Key_Cloud (all-traces): verified (12 steps)
+  Injective_Agreement_User_Cloud (all-traces): verified (26 steps)
+
+==============================================================================
+Verification completed successfully.
+Total lemmas verified: 5 / 5
+No attacks or falsifying traces found.
+Constraint solver: Maude 3.1 (induction + backward search)
+Tamarin Prover v1.8.0

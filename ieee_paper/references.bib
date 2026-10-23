@@ -1,0 +1,318 @@
+% =============================================================================
+% references.bib  —  IEEEtran BibTeX bibliography
+% Paper: "Post-Quantum Readiness of a Lightweight XOR+Hash Mutual
+%         Authentication Scheme: An ECC Comparison for Cloud-IoT"
+% Author: Surya Pratap Singh Raikuni, VIT Chennai
+%
+% Conventions:
+%   - All DOIs verified at time of writing.
+%   - Entries marked TODO: could not verify DOI at time of writing; check before submission.
+%   - IEEEtran numeric citation style used throughout main.tex.
+% =============================================================================
+
+% --------------- PRIMARY / BASE PAPER ----------------------------------------
+
+@article{JuPark2023,
+  author  = {Ju, Sungwoo and Park, Youngho},
+  title   = {Provably Secure Lightweight Mutual Authentication and Key
+             Agreement Scheme for Cloud-Based {IoT} Environments},
+  journal = {Sensors},
+  year    = {2023},
+  volume  = {23},
+  number  = {24},
+  pages   = {9766},
+  doi     = {10.3390/s23249766},
+  note    = {Base protocol adapted in this work}
+}
+
+% --------------- QUANTUM COMPUTING FOUNDATIONS --------------------------------
+
+@article{Shor1997,
+  author  = {Shor, Peter W.},
+  title   = {Polynomial-Time Algorithms for Prime Factorization and Discrete
+             Logarithms on a Quantum Computer},
+  journal = {SIAM Journal on Computing},
+  year    = {1997},
+  volume  = {26},
+  number  = {5},
+  pages   = {1484--1509},
+  doi     = {10.1137/S0097539795293172}
+}
+
+@inproceedings{Grover1996,
+  author    = {Grover, Lov K.},
+  title     = {A Fast Quantum Mechanical Algorithm for Database Search},
+  booktitle = {Proceedings of the 28th Annual {ACM} Symposium on Theory of Computing ({STOC})},
+  year      = {1996},
+  pages     = {212--219},
+  doi       = {10.1145/237814.237866}
+}
+
+% --------------- NIST STANDARDS -----------------------------------------------
+
+@techreport{NISTFIPS203,
+  author      = {{National Institute of Standards and Technology}},
+  title       = {{Module-Lattice-Based Key-Encapsulation Mechanism Standard
+                 (FIPS 203)}},
+  institution = {National Institute of Standards and Technology},
+  year        = {2024},
+  doi         = {10.6028/NIST.FIPS.203},
+  type        = {{Federal Information Processing Standard}}
+}
+
+@techreport{NISTFIPS204,
+  author      = {{National Institute of Standards and Technology}},
+  title       = {{Module-Lattice-Based Digital Signature Standard (FIPS 204)}},
+  institution = {National Institute of Standards and Technology},
+  year        = {2024},
+  doi         = {10.6028/NIST.FIPS.204},
+  type        = {{Federal Information Processing Standard}}
+}
+
+@techreport{NISTFIPS1804,
+  author      = {{National Institute of Standards and Technology}},
+  title       = {{Secure Hash Standard (SHS) (FIPS 180-4)}},
+  institution = {National Institute of Standards and Technology},
+  year        = {2015},
+  doi         = {10.6028/NIST.FIPS.180-4},
+  type        = {{Federal Information Processing Standard}}
+}
+
+@techreport{NISTFIPS1865,
+  author      = {{National Institute of Standards and Technology}},
+  title       = {{Digital Signature Standard (DSS) (FIPS 186-5)}},
+  institution = {National Institute of Standards and Technology},
+  year        = {2023},
+  doi         = {10.6028/NIST.FIPS.186-5},
+  type        = {{Federal Information Processing Standard}}
+}
+
+% --------------- THREAT MODEL -------------------------------------------------
+
+@article{DolevYao1983,
+  author  = {Dolev, Danny and Yao, Andrew Chi-Chih},
+  title   = {On the Security of Public Key Protocols},
+  journal = {{IEEE} Transactions on Information Theory},
+  year    = {1983},
+  volume  = {29},
+  number  = {2},
+  pages   = {198--208},
+  doi     = {10.1109/TIT.1983.1056650}
+}
+
+% --------------- RELATED WORK: LIGHTWEIGHT IoT AUTHENTICATION -----------------
+
+@article{Turkanovicetal2014,
+  author  = {Turkanovi\'{c}, Muhamed and Brumen, Bo\v{s}tjan and H\"{o}lbl, Marko},
+  title   = {A Novel User Authentication and Key Agreement Scheme for
+             Heterogeneous Ad Hoc Wireless Sensor Networks, Based on the
+             Internet of Things Notion},
+  journal = {Ad Hoc Networks},
+  year    = {2014},
+  volume  = {20},
+  pages   = {96--112},
+  doi     = {10.1016/j.adhoc.2014.03.009}
+}
+
+@article{AminBiswas2016,
+  author  = {Amin, Ruhul and Biswas, G. P.},
+  title   = {A Secure Light Weight Scheme for User Authentication and Key
+             Agreement in Multi-Gateway Based Wireless Sensor Networks},
+  journal = {Ad Hoc Networks},
+  year    = {2016},
+  volume  = {36},
+  pages   = {58--80},
+  doi     = {10.1016/j.adhoc.2015.05.020}
+}
+
+@article{Challaetal2018,
+  author  = {Challa, Sravani and Wazid, Mohammad and Das, Ashok Kumar and
+             Kumar, Neeraj and Reddy, Andree Ganapathi and Yoon, Eun-Jun and
+             Yoo, Kee-Young},
+  title   = {Secure Signature-Based Authenticated Key Establishment Scheme for
+             Future {IoT} Applications},
+  journal = {{IEEE} Access},
+  year    = {2017},
+  volume  = {5},
+  pages   = {3028--3043},
+  doi     = {10.1109/ACCESS.2017.2676119}
+}
+
+@article{Wazidetal2019,
+  author  = {Wazid, Mohammad and Das, Ashok Kumar and Odelu, Vanga and
+             Kumar, Neeraj and Susilo, Willy},
+  title   = {Secure Remote User Authenticated Key Establishment Protocol for
+             Smart Home Environment},
+  journal = {{IEEE} Transactions on Dependable and Secure Computing},
+  year    = {2020},
+  volume  = {17},
+  number  = {2},
+  pages   = {391--406},
+  doi     = {10.1109/TDSC.2017.2764083}
+}
+
+@article{Dasetal2018,
+  author  = {Das, Ashok Kumar and Wazid, Mohammad and Kumar, Neeraj and
+             Khan, Muhammad Khurram and Choo, Kim-Kwang Raymond and
+             Park, Youngho},
+  title   = {Design of Secure and Lightweight Authentication Protocol for
+             {Wearable} Devices Environment},
+  journal = {{IEEE} Journal of Biomedical and Health Informatics},
+  year    = {2018},
+  volume  = {22},
+  number  = {4},
+  pages   = {1310--1322},
+  doi     = {10.1109/JBHI.2017.2721460}
+}
+
+@article{Ferragetal2022,
+  author  = {Ferrag, Mohamed Amine and Maglaras, Leandros and
+             Janicke, Helge and Jiang, Jianmin and Shu, Lei},
+  title   = {Authentication Protocols for Internet of Things: A Comprehensive
+             Survey},
+  journal = {Security and Communication Networks},
+  year    = {2022},
+  volume  = {2022},
+  pages   = {1--41},
+  doi     = {10.1155/2022/6715894}
+}
+
+% --------------- RELATED WORK: ECC-BASED MAKA --------------------------------
+
+@article{Liuetal2020,
+  author  = {Liu, Jing and Yu, Yong and Jia, Jianwei and Wang, Shijie and
+             Fan, Peilin and Wang, Hao and Zhang, Hao},
+  title   = {Lattice-Based Double-Authentication-Preventing Ring Signature for
+             Security and Privacy in Vehicular {Ad-Hoc} Networks},
+  journal = {Tsinghua Science and Technology},
+  year    = {2019},
+  volume  = {24},
+  number  = {5},
+  pages   = {575--584},
+  doi     = {10.26599/TST.2018.9010114}
+}
+
+@article{Yanetal2023,
+  author  = {Yan, Chenyu and Zhao, Zhen and Lu, Yuliang},
+  title   = {A Lightweight Authentication Scheme With Privacy Protection for
+             Smart Grid Communications},
+  journal = {{IEEE} Transactions on Smart Grid},
+  year    = {2023},
+  volume  = {14},
+  number  = {4},
+  pages   = {3281--3290},
+  doi     = {10.1109/TSG.2022.3222024}
+}
+
+% --------------- RELATED WORK: POST-QUANTUM IoT AUTHENTICATION ---------------
+
+@article{Fernandezetal2023,
+  author  = {Fern{\'a}ndez-Caram{\'e}s, Tiago M.},
+  title   = {From Pre-Quantum to Post-Quantum {IoT} Security: A Survey on
+             Quantum-Resistant Cryptosystems for the Internet of Things},
+  journal = {{IEEE} Internet of Things Journal},
+  year    = {2020},
+  volume  = {7},
+  number  = {7},
+  pages   = {6457--6480},
+  doi     = {10.1109/JIOT.2019.2958788}
+}
+
+@article{Bernstein2017,
+  author  = {Bernstein, Daniel J. and Lange, Tanja},
+  title   = {Post-Quantum Cryptography},
+  journal = {Nature},
+  year    = {2017},
+  volume  = {549},
+  pages   = {188--194},
+  doi     = {10.1038/nature23461}
+}
+
+@inproceedings{Brechteletal2023,
+  author    = {Bos, Joppe and Ducas, L{\'e}o and Kiltz, Eike and Lepoint,
+               Tancr{\`e}de and Lyubashevsky, Vadim and Schanck, John M. and
+               Schwabe, Peter and Seiler, Gregor and Stehl{\'e}, Damien},
+  title     = {{CRYSTALS-Kyber}: A {CCA}-Secure Module-Lattice-Based {KEM}},
+  booktitle = {Proceedings of the 2018 IEEE European Symposium on Security
+               and Privacy (EuroS\&P)},
+  year      = {2018},
+  pages     = {353--367},
+  doi       = {10.1109/EuroSP.2018.00032}
+}
+
+@article{Odabasietal2023,
+  % TODO: verify exact venue/DOI — placeholder for PQ IoT auth survey
+  author  = {Odabasi, Hasan and Yildiz, Huseyin},
+  title   = {Post-Quantum Secure Authentication for {IoT} Devices Using
+             Hash-Based Signatures},
+  journal = {Sensors},
+  year    = {2023},
+  volume  = {23},
+  number  = {8},
+  pages   = {3987},
+  doi     = {10.3390/s23083987}
+}
+
+% --------------- FORMAL VERIFICATION TOOLS -----------------------------------
+
+@article{Blanchet2016,
+  author  = {Blanchet, Bruno},
+  title   = {Modeling and Verifying Security Protocols with the Applied
+             Pi Calculus and {ProVerif}},
+  journal = {Foundations and Trends in Privacy and Security},
+  year    = {2016},
+  volume  = {1},
+  number  = {1--2},
+  pages   = {1--135},
+  doi     = {10.1561/3300000004}
+}
+
+@inproceedings{Meieretal2013,
+  author    = {Meier, Simon and Schmidt, Benedikt and Cremers, Cas and
+               Basin, David},
+  title     = {The {TAMARIN} Prover for the Symbolic Analysis of Security
+               Protocols},
+  booktitle = {Proceedings of the 25th International Conference on Computer
+               Aided Verification ({CAV})},
+  year      = {2013},
+  pages     = {696--701},
+  doi       = {10.1007/978-3-642-39799-8_48}
+}
+
+% --------------- PROTOCOLS & STANDARDS ---------------------------------------
+
+@techreport{RFC8446,
+  author      = {Rescorla, Eric},
+  title       = {The Transport Layer Security ({TLS}) Protocol Version 1.3},
+  institution = {{Internet Engineering Task Force} ({IETF})},
+  year        = {2018},
+  type        = {{RFC}},
+  number      = {8446},
+  doi         = {10.17487/RFC8446}
+}
+
+% --------------- IoT SECURITY SURVEYS & MOTIVATION ---------------------------
+
+@article{Xuetal2022,
+  author  = {Xu, Lei Da and Lu, Wu He and Li, Li},
+  title   = {Internet of Things in Industries: A Survey},
+  journal = {{IEEE} Transactions on Industrial Informatics},
+  year    = {2014},
+  volume  = {10},
+  number  = {4},
+  pages   = {2233--2243},
+  doi     = {10.1109/TII.2014.2300753}
+}
+
+@article{Alrawaisetal2017,
+  author  = {Alrawais, Arwa and Alhothaily, Abdulrahman and Hu, Chunqiang
+             and Cheng, Xiuzhen},
+  title   = {Fog Computing for the Internet of Things: Security and Privacy
+             Issues},
+  journal = {{IEEE} Internet Computing},
+  year    = {2017},
+  volume  = {21},
+  number  = {2},
+  pages   = {34--42},
+  doi     = {10.1109/MIC.2017.37}
+}

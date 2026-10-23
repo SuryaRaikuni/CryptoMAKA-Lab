@@ -1,0 +1,32 @@
+flowchart TD
+    %% CryptoMAKA Lab Review 3 System Architecture Diagram
+    subgraph CloudIoT["Cloud-IoT Environment"]
+        UserDevice["User / Edge Device (IoT Gateway)\n- Credential Store (ID_i, PW_i, Bio_i)\n- Fuzzy Extractor Gen/Rep\n- Ephemeral Nonce Generator N_i"]
+        CloudServer["Cloud Server Gateway (CS)\n- Identity Verification Registry\n- Session Relayer\n- Ephemeral Nonce N_c"]
+        ControlServer["Control / Auth Server (AS)\n- Master Key Store x\n- Pseudo-identity Generator\n- Shared Session Key Derivation"]
+    end
+
+    subgraph SecurityModule["Automated Security & Verification Engine"]
+        DolevYao["Dolev-Yao Adversary Engine\n- Replay Attacker\n- Packet Tamperer\n- Impersonator\n- MitM Interceptor"]
+        FormalProver["Formal Protocol Verifiers\n- ProVerif (Applied Pi-Calculus)\n- Tamarin Prover (Multiset Rewriting)\n- Scyther Tool (Athena Engine)"]
+    end
+
+    subgraph BenchmarkTelemetry["Evaluation & Telemetry Engine"]
+        CycleTimer["High-Precision CPU Cycle Timer\n(Mean, Median, 95% Confidence Interval)"]
+        WirelessSim["IoT Wireless Channel Sim\n(LoRaWAN, NB-IoT, LTE-M, 5G)"]
+        EnergyModel["MCU Energy Profiler (ARM Cortex-M4)\nMicrojoule Consumption (uJ)"]
+        DB[(PostgreSQL Experiment History)]
+    end
+
+    UserDevice <-->|M1 / M4 Handshake| CloudServer
+    CloudServer <-->|M2 / M3 Handshake| ControlServer
+
+    UserDevice -.-> DolevYao
+    CloudServer -.-> DolevYao
+    ControlServer -.-> DolevYao
+
+    DolevYao --> FormalProver
+    UserDevice --> CycleTimer
+    CycleTimer --> DB
+    WirelessSim --> DB
+    EnergyModel --> DB

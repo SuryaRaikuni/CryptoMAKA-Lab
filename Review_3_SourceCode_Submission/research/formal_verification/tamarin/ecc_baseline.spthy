@@ -1,0 +1,154 @@
+/* =========================================================================
+   CryptoMAKA Tamarin Prover Formal Verification Model: ECC Baseline
+   Model: Three-Party Ephemeral ECDH Authenticated Key Agreement (Secp256r1)
+   Engine: Tamarin Prover (Diffie-Hellman Equational Theory & Rewriting)
+   ========================================================================= */
+
+theory ECCBaselineProtocol
+begin
+
+builtins: diffie-hellman, hashing, symmetric-encryption
+
+/* MAC primitive */
+functions: mac/2
+
+/* =========================================================================
+   1. Setup & Key Distribution Rules
+   ========================================================================= */
+
+rule Init_Registration_Center:
+    [ Fr(~k_rc) ]
+  --[ RCInit($RC) ]->
+    [ !RCState($RC, ~k_rc) ]
+
+rule Register_User_ECC:
+    [ !RCState($RC, ~k_rc), Fr(~k_u_rc) ]
+  --[ UserRegistered($User, $RC) ]->
+    [ !UserState($User, $RC, ~k_u_rc),
+      !RCUserKey($RC, $User, ~k_u_rc) ]
+
+rule Register_Cloud_ECC:
+    [ !RCState($RC, ~k_rc), Fr(~k_s_rc) ]
+  --[ CloudRegistered($Cloud, $RC) ]->
+    [ !CloudState($Cloud, $RC, ~k_s_rc),
+      !RCCloudKey($RC, $Cloud, ~k_s_rc) ]
+
+/* Attacker compromise rule for Perfect Forward Secrecy (PFS) analysis */
+rule Compromise_LongTerm_Key_User:
+    [ !UserState($User, $RC, k_u_rc) ]
+  --[ Compromised($User) ]->
+    [ Out(k_u_rc) ]
+
+rule Compromise_LongTerm_Key_Cloud:
+    [ !CloudState($Cloud, $RC, k_s_rc) ]
+  --[ Compromised($Cloud) ]->
+    [ Out(k_s_rc) ]
+
+/* =========================================================================
+   2. Protocol Handshake Rules
+   ========================================================================= */
+
+/* Step 1: User generates ephemeral scalar ~a, ECDH pubA = 'g'^~a, sends M1 */
+rule User_Send_M1:
+    let pubA = 'g'^~a
+        auth_u = mac(<'m1', $User, $Cloud, pubA, ~nu>, k_u_rc)
+        m1 = <$User, $Cloud, pubA, ~nu, auth_u, ~ts1>
+    in
+    [ !UserState($User, $RC, k_u_rc), Fr(~a), Fr(~nu), Fr(~ts1) ]
+  --[ UserStart($User, $Cloud, pubA, ~nu) ]->
+    [ Out(m1), UserSession($User, $RC, $Cloud, k_u_rc, ~a, pubA, ~nu, ~ts1) ]
+
+/* Step 2: Cloud receives M1, generates ephemeral scalar ~b, pubB = 'g'^~b, sends M2 to RC */
+rule Cloud_Forward_M2:
+    let pubB = 'g'^~b
+        auth_s = mac(<'m2', $Cloud, pubB, ~ns>, k_s_rc)
+        m2 = <m1, $Cloud, pubB, ~ns, auth_s, ~ts2>
+    in
+    [ !CloudState($Cloud, $RC, k_s_rc),
+      In(<$User, $Cloud, pubA, nu, auth_u, ts1>),
+      Fr(~b), Fr(~ns), Fr(~ts2) ]
+  --[ CloudForward($Cloud, $User, pubB, ~ns) ]->
+    [ Out(m2), CloudSession($Cloud, $RC, $User, k_s_rc, ~b, pubB, ~ns, pubA, nu) ]
+
+/* Step 3: Registration Center verifies authenticators and issues encrypted tickets */
+rule RC_Process_M2_Send_M3:
+    let m1 = <$User, $Cloud, pubA, nu, auth_u, ts1>
+        expected_auth_u = mac(<'m1', $User, $Cloud, pubA, nu>, k_u_rc)
+        expected_auth_s = mac(<'m2', $Cloud, pubB, ns>, k_s_rc)
+        ticket_cloud = senc(<'ticket_s', $User, pubA, nu>, k_s_rc)
+        ticket_user = senc(<'ticket_u', $Cloud, pubB, ns>, k_u_rc)
+        m3 = <ticket_cloud, ticket_user, ~ts3>
+    in
+    [ !RCUserKey($RC, $User, k_u_rc),
+      !RCCloudKey($RC, $Cloud, k_s_rc),
+      In(<m1, $Cloud, pubB, ns, auth_s, ts2>),
+      Fr(~ts3) ]
+  --[ Eq(auth_u, expected_auth_u),
+      Eq(auth_s, expected_auth_s),
+      RCVerified($RC, $User, $Cloud) ]->
+    [ Out(m3) ]
+
+/* Step 4: Cloud processes ticket from RC, computes ECDH secret pubA^~b, derives SK, sends M4 */
+rule Cloud_Finish_M3_Send_M4:
+    let dh_secret = pubA^~b
+        SK_Cloud = h(<'sk', dh_secret, nu, ~ns>)
+        auth_m4 = mac(<'m4', $Cloud, SK_Cloud, ~ts4>, SK_Cloud)
+        m4 = <ticket_user, auth_m4, ~ts4>
+    in
+    [ CloudSession($Cloud, $RC, $User, k_s_rc, ~b, pubB, ~ns, pubA, nu),
+      In(<senc(<'ticket_s', $User, pubA, nu>, k_s_rc), ticket_user, ts3>),
+      Fr(~ts4) ]
+  --[ CloudCommit($Cloud, $User, SK_Cloud),
+      CloudKeyDerive($Cloud, $User, dh_secret) ]->
+    [ Out(m4), !CloudSessionKey($Cloud, $User, SK_Cloud) ]
+
+/* Step 5: User decrypts ticket, computes pubB^~a, derives SK, verifies M4 authenticator */
+rule User_Finish_M4:
+    let dh_secret = pubB^~a
+        SK_User = h(<'sk', dh_secret, ~nu, ns>)
+        expected_auth_m4 = mac(<'m4', $Cloud, SK_User, ts4>, SK_User)
+    in
+    [ UserSession($User, $RC, $Cloud, k_u_rc, ~a, pubA, ~nu, ~ts1),
+      In(<senc(<'ticket_u', $Cloud, pubB, ns>, k_u_rc), auth_m4, ts4>) ]
+  --[ Eq(auth_m4, expected_auth_m4),
+      UserCommit($User, $Cloud, SK_User),
+      UserKeyDerive($User, $Cloud, dh_secret) ]->
+    [ !UserSessionKey($User, $Cloud, SK_User) ]
+
+/* =========================================================================
+   3. Verification Lemmas (Secrecy, Perfect Forward Secrecy & Agreement)
+   ========================================================================= */
+
+restriction EqualityCheck:
+    "All x y #i. Eq(x, y) @i ==> x = y"
+
+/* 1. Protocol reaches valid completion */
+lemma Executability [exists-trace]:
+    exists-trace
+    "Ex u sj k #i #j. UserCommit(u, sj, k) @i & CloudCommit(sj, u, k) @j"
+
+/* 2. Strong Secrecy of User Session Key without compromise */
+lemma Secrecy_Session_Key_User:
+    "All u sj k #i. UserCommit(u, sj, k) @i
+     ==> not (Ex #j. !KU(k) @j)"
+
+/* 3. Strong Secrecy of Cloud Session Key without compromise */
+lemma Secrecy_Session_Key_Cloud:
+    "All sj u k #i. CloudCommit(sj, u, k) @i
+     ==> not (Ex #j. !KU(k) @j)"
+
+/* 4. Perfect Forward Secrecy: Compromising long-term keys AFTER session completion
+      does not reveal ephemeral ECDH session key */
+lemma Perfect_Forward_Secrecy:
+    "All u sj k #i. UserCommit(u, sj, k) @i
+     ==> (not (Ex #j. !KU(k) @j))
+         | (Ex #c. Compromised(u) @c & #c < #i)
+         | (Ex #c. Compromised(sj) @c & #c < #i)"
+
+/* 5. Injective Mutual Agreement */
+lemma Injective_Agreement_User_Cloud:
+    "All u sj k #i. UserCommit(u, sj, k) @i
+     ==> (Ex #j. CloudCommit(sj, u, k) @j & #j < #i
+          & not (Ex u2 #i2. UserCommit(u2, sj, k) @i2 & not (#i = #i2)))"
+
+end

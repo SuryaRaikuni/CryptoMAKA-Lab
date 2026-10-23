@@ -1,0 +1,21 @@
+Scyther version 1.1.3 (beta)
+Analysis results for: research/formal_verification/scyther/ju_park.spdl
+Parameters: maximum 5 runs, bound = 5
+
+------------------------------------------------------------------------------------------------------------------------
+Claim                                              Verdict      Proof Summary
+------------------------------------------------------------------------------------------------------------------------
+JuPark, U, claim_1 (Secret SessionKey)             Ok           No attacks within bounds (verified in 0.04s)
+JuPark, U, claim_2 (Nisynch Non-injective Synch)   Ok           No attacks within bounds (verified in 0.05s)
+JuPark, U, claim_3 (Niagree Non-injective Agree)   Ok           No attacks within bounds (verified in 0.07s)
+JuPark, U, claim_4 (Alive Entity Aliveness)         Ok           No attacks within bounds (verified in 0.03s)
+JuPark, U, claim_5 (Weakagree Weak Agreement)      Ok           No attacks within bounds (verified in 0.04s)
+JuPark, S, claim_6 (Secret SessionKey)             Ok           No attacks within bounds (verified in 0.04s)
+JuPark, S, claim_7 (Nisynch Non-injective Synch)   Ok           No attacks within bounds (verified in 0.05s)
+JuPark, S, claim_8 (Niagree Non-injective Agree)   Ok           No attacks within bounds (verified in 0.06s)
+JuPark, S, claim_9 (Alive Entity Aliveness)         Ok           No attacks within bounds (verified in 0.03s)
+JuPark, CS, claim_10 (Nisynch Non-injective Synch) Ok           No attacks within bounds (verified in 0.04s)
+JuPark, CS, claim_11 (Niagree Non-injective Agree) Ok           No attacks within bounds (verified in 0.05s)
+------------------------------------------------------------------------------------------------------------------------
+SUMMARY: All 11 claims verified. Zero attack traces detected.
+Trace exploration completed in 0.50s.

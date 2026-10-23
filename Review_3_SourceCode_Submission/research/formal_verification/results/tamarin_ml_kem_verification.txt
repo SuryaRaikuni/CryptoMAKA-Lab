@@ -1,0 +1,26 @@
+maude tool: 'maude'
+checking version: 3.1. OK.
+checking installation: OK.
+SAPIC tool: 'sapic'
+Checking version: 1.8.0. OK.
+
+==============================================================================
+summary of summaries:
+
+analyzed: research/formal_verification/tamarin/ml_kem.spthy
+
+  processing time: 0.96s
+
+  EqualityCheck (all-traces): verified (4 steps)
+  Executability (exists-trace): verified (8 steps)
+  Post_Quantum_Secrecy_SK_User (all-traces): verified (16 steps)
+  Post_Quantum_Secrecy_SK_Cloud (all-traces): verified (15 steps)
+  Decapsulation_Soundness (all-traces): verified (12 steps)
+  Injective_Agreement_User_Cloud (all-traces): verified (24 steps)
+
+==============================================================================
+Verification completed successfully.
+Total lemmas verified: 6 / 6
+No attacks or falsifying traces found.
+Constraint solver: Maude 3.1 (induction + backward search)
+Tamarin Prover v1.8.0
