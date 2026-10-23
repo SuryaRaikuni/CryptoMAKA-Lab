@@ -3,13 +3,14 @@ CryptoMAKA Lab - Review 3 PowerPoint Presentation Generator
 Uses python-pptx to generate a professional, academic 16:9 widescreen slide deck.
 """
 
-import sys
 from pathlib import Path
+
 from pptx import Presentation
-from pptx.util import Inches, Pt
-from pptx.enum.text import PP_ALIGN
 from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_SHAPE
+from pptx.enum.text import PP_ALIGN
+from pptx.util import Inches, Pt
+
 
 def create_presentation():
     prs = Presentation()
@@ -23,7 +24,6 @@ def create_presentation():
     DARK_BLUE = RGBColor(30, 58, 138)# #1E3A8A
     GREEN = RGBColor(5, 150, 105)    # #059669
     SLATE = RGBColor(71, 85, 105)    # #475569
-    LIGHT_BG = RGBColor(248, 250, 252)# #F8FAFC
     CARD_BG = RGBColor(255, 255, 255) # White
     BORDER_COL = RGBColor(203, 213, 225) # #CBD5E1
 

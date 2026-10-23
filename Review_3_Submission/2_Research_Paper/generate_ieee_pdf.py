@@ -3,13 +3,12 @@ Review 3 Academic IEEE PDF Paper Generator
 Generates a publication-grade camera-ready PDF formatted strictly to IEEE conference standards.
 """
 
-import sys
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.styles import ParagraphStyle
 from reportlab.pdfgen import canvas
 from reportlab.platypus import (
     HRFlowable,
@@ -70,8 +69,6 @@ def build_pdf():
         bottomMargin=50,
     )
 
-    styles = getSampleStyleSheet()
-
     # Academic Typography Styles
     title_style = ParagraphStyle(
         "IEEE_Title",
@@ -90,13 +87,6 @@ def build_pdf():
         alignment=1,
         spaceAfter=12,
         textColor=colors.HexColor("#1E293B")
-    )
-    abstract_heading = ParagraphStyle(
-        "IEEE_Abs_Head",
-        fontName="Times-BoldItalic",
-        fontSize=9.5,
-        leading=12,
-        textColor=colors.HexColor("#0F172A")
     )
     abstract_body = ParagraphStyle(
         "IEEE_Abs_Body",

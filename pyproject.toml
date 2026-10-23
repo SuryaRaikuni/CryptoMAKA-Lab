@@ -38,6 +38,16 @@ asyncio_mode = "auto"
 
 [tool.ruff]
 line-length = 100
+exclude = [
+    "Review_3_Submission",
+    "Review_3_SourceCode_Submission",
+    "ieee_paper",
+    "dist",
+    "build",
+    ".venv",
+    ".venv_new",
+    ".venv-1",
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]

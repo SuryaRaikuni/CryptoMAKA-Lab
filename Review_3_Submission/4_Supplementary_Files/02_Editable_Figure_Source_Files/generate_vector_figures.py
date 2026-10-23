@@ -3,9 +3,10 @@ CryptoMAKA Lab - Vector Figures Generator for Review 3 & IEEE Paper
 Generates publication-quality editable vector figures (SVG, PDF, PNG)
 """
 
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import numpy as np
-from pathlib import Path
 
 # Publication style
 plt.style.use('seaborn-v0_8-whitegrid' if 'seaborn-v0_8-whitegrid' in plt.style.available else 'default')
@@ -118,8 +119,8 @@ def make_fig_energy_consumption():
     x = np.arange(len(protocols))
     width = 0.45
     
-    p1 = ax.bar(x, e_comp, width, label='Cryptographic Computation Energy', color='#4F46E5', edgecolor='black')
-    p2 = ax.bar(x, e_tx,   width, bottom=e_comp, label='NB-IoT Wireless Tx Energy', color='#F97316', edgecolor='black')
+    ax.bar(x, e_comp, width, label='Cryptographic Computation Energy', color='#4F46E5', edgecolor='black')
+    ax.bar(x, e_tx,   width, bottom=e_comp, label='NB-IoT Wireless Tx Energy', color='#F97316', edgecolor='black')
     
     ax.set_ylabel('Total Device Energy Consumption (uJ)', fontweight='bold')
     ax.set_xticks(x)
@@ -150,7 +151,7 @@ def make_fig_security_matrix():
     
     matrix = np.array([ju_park, ecc, proposed, ml_kem])
     
-    cax = ax.imshow(matrix, cmap='Blues', aspect='auto', vmin=0, vmax=1)
+    ax.imshow(matrix, cmap='Blues', aspect='auto', vmin=0, vmax=1)
     
     ax.set_xticks(np.arange(len(attacks)))
     ax.set_yticks(np.arange(4))
